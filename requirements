@@ -1,5 +1,0 @@
-import Pkg
-Pkg.update()
-Pkg.add("Convex")
-Pkg.add("SCS")
-Pkg.add("ECOS")
