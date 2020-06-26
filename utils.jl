@@ -1,10 +1,16 @@
 module Utils
 
+import Base.+
+
 export
 	rk4,
 	rk4!,
 	interp_vec,
 	skew
+
+function +(i::Int64,rng::UnitRange{Int64})
+	return UnitRange{Int64}(rng.start+i,rng.stop+i)
+end
 
 function rk4(f::Function,tspan,x0::Array{Float64,1})
 

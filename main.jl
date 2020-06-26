@@ -1,12 +1,7 @@
-# using LinearAlgebra
-# using .Utils
 include("scvx.jl")
+include("model.jl")
 
-using .Scvx
-# using .Convexify
-
-# include("types.jl")
-# include("model.jl")
+# using .Scvx
 
 println("Point Mass Example")
 
@@ -15,22 +10,10 @@ m = 1.0
 Cd = 0.5
 Sd = 0.05
 ρ = 1.25
+id_r = 1:3
+id_v = 4:6
 
-pars = PointMassParameters(m,Cd,Sd,ρ)
-
-# tspan = range(0.,stop=1.,length=10);
-# x0 = [ 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ];
-# u  = [ 0.1 0.2; 0.1 0.2; 0.2 0.3 ];
-# ut = [ 0.; 1. ];
-
-# f(t,x) = dynamics(t,x,u,ut,pars);
-
-# X = rk4(f,tspan,x0)
-
-# println("X is:")
-# for k = 1:10
-# 	println(X[:,k])
-# end
+pars = PointMassParameters(m,Cd,Sd,ρ,id_r,id_v)
 
 # initial conditions
 t0_min = 0.0
