@@ -8,8 +8,12 @@ struct ScvxParameters{T<:ModelParameters}
 	nu::Integer
 	iter_max::Integer
 	wvc::Float64
-	wtr::Float64
-	wtrp::Float64
+	ρ_0::Float64
+	ρ_1::Float64
+	ρ_2::Float64
+	α::Float64
+	β::Float64
+	tr::Float64
 	cvrg_tol::Float64
 	feas_tol::Float64
 	mdl_pars::T
@@ -46,6 +50,18 @@ struct ScvxBnds
 	path::ScvxPathBnds
 end
 
+struct ScvxScale
+	Sx::Array{Float64,2}
+	cx::Array{Float64,1}
+	Su::Array{Float64,2}
+	cu::Array{Float64,1}
+	Sp::Float64
+	cp::Float64
+	iSx::Array{Float64,2}
+	iSu::Array{Float64,2}
+	iSp::Float64
+end
+
 mutable struct ScvxSolution
 	state::Array{Float64,2}
 	control::Array{Float64,2}
@@ -58,7 +74,10 @@ mutable struct ScvxSolution
 	Rd::Array{Float64,2}
 	defects::Array{Float64,1}
 
+	vc::Float64
+
 	feas::Bool
+	flag::Integer
 end
 function ScvxSolution(x::Array{Float64,2},u::Array{Float64,2},t::Float64,nx::Integer,nu::Integer,N::Integer)
 	ScvxSolution(x,u,t,
@@ -68,7 +87,9 @@ function ScvxSolution(x::Array{Float64,2},u::Array{Float64,2},t::Float64,nx::Int
 		Array{Float64}(undef,(nx,N-1)),
 		Array{Float64}(undef,(nx,N-1)),
 		Array{Float64}(undef,N-1),
-		false)
+		0.0,
+		false,
+		-1)
 end
 
 mutable struct ScvxProblem

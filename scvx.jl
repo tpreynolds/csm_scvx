@@ -9,7 +9,7 @@ using ECOS
 using Printf
 using LinearAlgebra
 
-using .Utils
+using .MyUtils
 # using .Convexify
 
 # export
@@ -17,16 +17,8 @@ using .Utils
 # 	disp_sol,
 # 	disp_Ad
 
-################################################################################
-################################################################################
-################################################################################
-
-
-################################################################################
-################################################################################
-################################################################################
-
-function initialize(bnds::ScvxBnds,pars::ScvxParameters{<:ModelParameters})::ScvxProblem
+function scvx_initialize(bnds::ScvxBnds,
+						 pars::ScvxParameters{<:ModelParameters})::ScvxProblem
 
 	# constants
 	nx = pars.nx
@@ -37,7 +29,6 @@ function initialize(bnds::ScvxBnds,pars::ScvxParameters{<:ModelParameters})::Scv
 	x0_max = bnds.init.x_max
 	xf_min = bnds.trgt.x_min
 	xf_max = bnds.trgt.x_max
-
 	x0 = zeros(nx,1)
 	xf = zeros(nx,1)
 	for k = 1:nx
@@ -73,32 +64,240 @@ function init_straightline(v0,vf,N)::Array{Float64,2}
 	return v
 end
 
-# function solve()
+function scvx_set_scales(prob::ScvxProblem)::ScvxScale
+	# sizes
+	nx = prob.pars.nx
+	nu = prob.pars.nu
 
-# end
+	# min/max state, control and final time
+	x_min = prob.bnds.path.x_min
+	x_max = prob.bnds.path.x_max
+	u_min = prob.bnds.path.u_min
+	u_max = prob.bnds.path.u_max
+	t_min = prob.bnds.init.t_min
+	t_max = prob.bnds.trgt.t_max
 
-# function solve_socp()
+	# choose scaled variable intervals
+	intrvl_x  = [0;1]
+	wdth_x    = intrvl_x[2]-intrvl_x[1]
+	intrvl_u  = [0;1]
+	wdth_u    = intrvl_u[2]-intrvl_u[1]
+	intrvl_t  = [0;1]
+	wdth_t    = intrvl_t[2]-intrvl_t[1]
 
-# solver = () -> ECOS.Optimizer(verbose=0);
+	# state terms
+	Sx  = zeros(nx,nx)
+	iSx = zeros(nx,nx)
+	cx  = zeros(nx)
+	for k = 1:nx
+	    Sx[k,k]  = (x_max[k]-x_min[k])/wdth_x
+	    iSx[k,k] = 1.0/Sx[k,k]
+	    cx[k]    = x_min[k]-Sx[k,k]*intrvl_x[1]
+	end
 
-# x = Variable(4);
-# c = [1;2;3;4];
-# A = I(4);
-# b = [10;10;10;10];
-# p = minimize(dot(c,x))
-# p.constraints += A * x <= b;
-# p.constraints += [ x>=1; x<=10; x[2]<=5; x[1]+x[4]-x[2]<=10];
-# solve!(p,solver);
+	# control terms
+	Su = zeros(nu,nu)
+	iSu = zeros(nu,nu)
+	cu = zeros(nu)
+	for k = 1:nu
+		Su[k,k]  = (u_max[k]-u_min[k])/wdth_u
+		iSu[k,k] = 1.0/Su[k,k]
+		cu[k] 	 = u_min[k]-Sx[k,k]*intrvl_u[1]
+	end
 
-# println(p.optval);
-# println(x.value);
-# println(evaluate(x[1]+x[4]-x[2]));
+	# temporal terms
+	Sp 	= (t_max-t_min)/wdth_t
+	iSp = 1.0/Sp
+	cp 	= t_min - Sp * intrvl_t[1]
 
-# end
+	# create and return ScvxScale
+	return ScvxScale(Sx,cx,Su,cu,Sp,cp,iSx,iSu,iSp)
+end
+
+function scvx_solve!(prob::ScvxProblem)
+	# print intro
+	print("Solving...")
+
+	# set scaling matrices
+	scale = scvx_set_scales(prob);
+
+	for iter = 1:prob.pars.iter_max
+
+	    # solve an SOCP
+	    solve_socp!(prob,scale);
+
+	    # convexify along new solution
+	    convexify!(prob.new_sol,prob.pars)
+
+	    # perform update step
+	    # if (strcmp(obj.ctrl.algo,'ptr'))
+	    #     reject = false;
+	    #     change = '';
+	    # else
+	        # [reject,change] = scvx_update_step(prob);
+	    # end
+
+	    # check convergence and exit if done
+	    # converged = scvx_check_convergence(prob,varxu);
+
+	    # print iterate information
+	#     scvx_print_status(prob,iter,varxu,reject,change);
+	#     if (converged)
+	#         break;
+	#     end
+	# end
+	#
+	# if (nargout>0)
+	#     flag = scvx_exitcode(prob,iter,converged);
+	end
+end
+
+function solve_socp!(prob::ScvxProblem,scale::ScvxScale)
+
+	# get problem data
+	nx  = prob.pars.nx
+	nu  = prob.pars.nu
+	N   = prob.pars.N
+	wvc = prob.pars.wvc
+	tr  = prob.pars.tr
+
+	# scaling matrices
+	Sx  = scale.Sx
+	cx  = scale.cx
+	Su  = scale.Su
+	cu  = scale.cu
+	Sp  = scale.Sp
+	cp  = scale.cp
+	iSx = scale.iSx
+	iSu = scale.iSu
+	iSp = scale.iSp
+
+	# reference solution
+	x_ref = prob.prv_sol.state
+	u_ref = prob.prv_sol.control
+	p_ref = prob.prv_sol.tf
+	Ad  = prob.prv_sol.Ad
+	Bdm = prob.prv_sol.Bdm
+	Bdp = prob.prv_sol.Bdp
+	Sd  = prob.prv_sol.Sd
+	Rd  = prob.prv_sol.Rd
+
+	# variables
+	xb  = Variable(nx,N)
+	ub  = Variable(nu,N)
+	pb  = Variable(1)
+	vc  = Variable(nx,N-1)
+
+	# cost function
+	socp = minimize( opt_cost(xb,ub,pb,N) + wvc * norm_1(vec(vc)) )
+
+	# constraints
+	socp.constraints += (Sx*xb[:,1]+cx) <= prob.bnds.init.x_max
+	socp.constraints += (Sx*xb[:,1]+cx) >= prob.bnds.init.x_min
+
+	socp.constraints += (Sx*xb[:,N]+cx) <= prob.bnds.trgt.x_max
+	socp.constraints += (Sx*xb[:,N]+cx) >= prob.bnds.trgt.x_min
+
+	socp.constraints += (Sp*pb+cp) <= prob.bnds.trgt.t_max
+	socp.constraints += (Sp*pb+cp) >= prob.bnds.trgt.t_min
+
+	for k = 1:N
+		xbk = xb[:,k]
+		ubk = ub[:,k]
+		xk  = (Sx*xbk+cx)
+		uk  = (Su*ubk+cu)
+		dxk = xbk - iSx * (x_ref[:,k]-cx)
+		duk = ubk - iSu * (u_ref[:,k]-cu)
+		# dynamics
+		if k<N
+			xbkp = xb[:,k+1]
+			ubkp = ub[:,k+1]
+			socp.constraints += (Sx*xbkp+cx) == Ad[:,:,k]*xk + Bdm[:,:,k]*uk + Bdp[:,:,k]*(Su*ubkp+cu) + Sd[:,k]*(Sp*pb+cp) + Rd[:,k] + vc[:,k]
+		end
+
+		# path constraints
+		socp.constraints += xk <= prob.bnds.path.x_max
+		socp.constraints += xk >= prob.bnds.path.x_min
+		socp.constraints += uk <= prob.bnds.path.u_max
+		socp.constraints += uk >= prob.bnds.path.u_min
+
+		# trust region
+		socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
+	end
+
+	# solve the problem
+	solver = () -> ECOS.Optimizer(verbose=0)
+	solve!(socp,solver)
+
+	prob.new_sol.state = Sx*(xb.value).+cx
+	prob.new_sol.control = Su*(ub.value).+cu
+	prob.new_sol.tf = Sp*(pb.value)+cp
+	prob.new_sol.vc = norm(vec(vc.value),1)
+
+	prob.new_sol.flag = -1
+
+end # solve_socp
+
+function scvx_update!(prob::ScvxProblem)
+	cost = opt_cost()
+	new_L = cost + prob.pars.wvc * prob.new_sol.vc
+	new_J = cost + prob.pars.wvc * sum(prob.new_sol.defects)
+
+	dL = prob.prv_J + new_L
+	dJ = prob.prv_J + new_J
+	tr = prob.pars.tr
+	if dL>1e-12
+		# compute performance metric
+		ρ = dJ/dL
+		#  update trust region radius
+		if ( ρ < prob.pars.ρ_1 )
+    		reject = true
+    		tr = tr / prob.pars.α
+    		change = 'S'
+		else
+    		reject = false;
+    		prob.last_J = new_J;
+    		if ( ρ < prob.pars.ρ_1 )
+        		# shrink
+        		tr = tr / prob.pars.α
+        		change = 'S';
+    		elseif ( (ρ >= prob.pars.ρ_1) && (ρ < prob.pars.ρ_2) )
+				# keep
+        		change = 'K';
+    		else
+        		# grow
+        		tr = tr * prob.pars.β;
+        		change = 'G';
+    		end #if
+		end #if
+	end #if
+
+	# saturate trust region to lower/upper bound
+	if (tr < prob.pars.tr_lb)
+	    tr = prob.pars.tr_lb;
+	    change = 'L';
+	elseif (tr > prob.pars.tr_ub)
+	    tr = prob.pars.tr_ub;
+	    change = 'U';
+	end
+
+	# replace updated trust region
+	prob.pars.tr = tr;
+
+	# if the step was rejected, replace the
+	if !reject
+		set_prv_solution!(prob)
+	end # if
+
+end #scvx_update!
 
 # function check_convergence()
 
 # end
+
+function set_prv_solution!(prob::ScvxProblem)
+	prob.prv_sol = prob.new_sol
+end
 
 function disp_sol(sol::ScvxSolution,pars::ScvxParameters)
 	t = range(0.,stop=sol.tf,length=pars.N)

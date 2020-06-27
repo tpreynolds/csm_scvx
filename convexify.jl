@@ -1,10 +1,3 @@
-# module Convexify
-#
-# include("types.jl")
-#
-# export
-# 	convexify!
-
 mutable struct cvxfy_params
 	nx::Integer
 	id_x::UnitRange{Integer}
@@ -18,6 +11,7 @@ mutable struct cvxfy_params
 	tauspan::Array{Float64,1}
 	mdl_pars
 end
+
 function cvxfy_params(nx::Integer,nu::Integer,tf::Float64,pars::T) where T<:ModelParameters
 	id_x  = (1:nx)
 	id_A  = id_x[end] + (1:nx*nx)
@@ -115,4 +109,3 @@ function deriv(tau,V,cvxfy_pars)
 
 	dV = [ dx; vec(dPHI); vec(dBm); vec(dBp); vec(dS); vec(dR) ]
 end
-# end # module

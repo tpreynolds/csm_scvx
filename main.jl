@@ -42,10 +42,14 @@ N = 20
 Nsub = 10
 nx = 6
 nu = 3
-iter_max = 20
+iter_max = 1
 wvc = 1e2
-wtr = 1e-2
-wtrp = 1e-3
+ρ_0 = 0.0
+ρ_1 = 0.1
+ρ_2 = 0.7
+α   = 2.0
+β   = 2.0
+tr  = 0.5
 cvrg_tol = 1e-2
 feas_tol = 1e-2
 
@@ -53,8 +57,13 @@ init = ScvxInitBnds(t0_min,t0_max,x0_min,x0_max,u0_min,u0_max)
 trgt = ScvxTrgtBnds(tf_min,tf_max,xf_min,xf_max,uf_min,uf_max)
 path = ScvxPathBnds(x_min,x_max,u_min,u_max)
 bnds = ScvxBnds(init,trgt,path)
-ctrl = ScvxParameters(N,Nsub,nx,nu,iter_max,wvc,wtr,wtrp,cvrg_tol,feas_tol,pars)
+ctrl = ScvxParameters(N,Nsub,nx,nu,iter_max,wvc,
+                        ρ_0,ρ_1,ρ_2,α,β,tr,cvrg_tol,feas_tol,pars)
 
-prob = initialize(bnds,ctrl)
+# initialize an Scvx problem
+prob = scvx_initialize(bnds,ctrl)
+
+# solve the Scvx problem
+scvx_solve!(prob)
 
 # output = solve(prob)
