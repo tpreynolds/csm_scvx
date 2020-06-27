@@ -13,7 +13,8 @@ struct ScvxParameters{T<:ModelParameters}
 	ρ_2::Float64
 	α::Float64
 	β::Float64
-	tr::Float64
+	tr_lb::Float64
+	tr_ub::Float64
 	cvrg_tol::Float64
 	feas_tol::Float64
 	mdl_pars::T
@@ -98,7 +99,8 @@ mutable struct ScvxProblem
 	prv_sol::ScvxSolution
 	new_sol::ScvxSolution
 	prv_J::Float64
+	tr::Float64
 end
-function ScvxProblem(bnds::ScvxBnds,pars::ScvxParameters,sol::ScvxSolution)
-	ScvxProblem(bnds,pars,sol,sol,0.0)
+function ScvxProblem(bnds::ScvxBnds,pars::ScvxParameters,sol::ScvxSolution,tr::Float64)
+	ScvxProblem(bnds,pars,sol,sol,0.0,tr)
 end

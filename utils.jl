@@ -4,7 +4,6 @@ import Base.+
 
 export
 	rk4,
-	rk4!,
 	interp_vec,
 	skew
 

@@ -11,7 +11,6 @@ mutable struct cvxfy_params
 	tauspan::Array{Float64,1}
 	mdl_pars
 end
-
 function cvxfy_params(nx::Integer,nu::Integer,tf::Float64,pars::T) where T<:ModelParameters
 	id_x  = (1:nx)
 	id_A  = id_x[end] + (1:nx*nx)
@@ -43,7 +42,6 @@ function convexify!(sol::ScvxSolution,pars::ScvxParameters)
 
 	for k = 1:N-1
 		# set initial condition
-		# V = V0
 		V0[cvxfy_pars.id_x] = sol.state[:,k]
 		# set remaining parameters
 		tauspan = LinRange(tau[k],tau[k+1],Nsub)
@@ -79,7 +77,7 @@ function convexify!(sol::ScvxSolution,pars::ScvxParameters)
 		end
 	end
 	sol.feas = feas
-	return sol
+	return nothing
 end
 
 function deriv(tau,V,cvxfy_pars)

@@ -18,8 +18,9 @@ using .MyUtils
 # 	disp_Ad
 
 function scvx_initialize(bnds::ScvxBnds,
-						 pars::ScvxParameters{<:ModelParameters})::ScvxProblem
-
+						 pars::ScvxParameters{<:ModelParameters},
+						 tr::Float64)::ScvxProblem
+	 print("Initializing")
 	# constants
 	nx = pars.nx
 	N = pars.N
@@ -42,14 +43,16 @@ function scvx_initialize(bnds::ScvxBnds,
 
 	# initial time guess halfway between bounds
 	tf = 0.5 * (bnds.trgt.t_min + bnds.trgt.t_max)
-
+	print(".")
 	# create initial solution struct
 	init_sol = ScvxSolution(x,u,tf,nx,pars.nu,N)
-
+	print(".")
 	# convexify along initial guess
 	convexify!(init_sol,pars)
+	print(".")
 
-	return ScvxProblem(bnds,pars,init_sol)
+	println("done.")
+	return ScvxProblem(bnds,pars,init_sol,tr)
 end
 
 function init_straightline(v0,vf,N)::Array{Float64,2}
@@ -116,7 +119,7 @@ end
 
 function scvx_solve!(prob::ScvxProblem)
 	# print intro
-	print("Solving...")
+	println("Solving...")
 
 	# set scaling matrices
 	scale = scvx_set_scales(prob);
@@ -124,42 +127,36 @@ function scvx_solve!(prob::ScvxProblem)
 	for iter = 1:prob.pars.iter_max
 
 	    # solve an SOCP
-	    solve_socp!(prob,scale);
+	    varxu = solve_socp!(prob,scale)
 
 	    # convexify along new solution
 	    convexify!(prob.new_sol,prob.pars)
 
 	    # perform update step
-	    # if (strcmp(obj.ctrl.algo,'ptr'))
-	    #     reject = false;
-	    #     change = '';
-	    # else
-	        # [reject,change] = scvx_update_step(prob);
-	    # end
+		reject,change = scvx_update!(prob)
 
 	    # check convergence and exit if done
-	    # converged = scvx_check_convergence(prob,varxu);
+		cvrg = scvx_convergence(varxu,prob.pars.cvrg_tol)
 
 	    # print iterate information
-	#     scvx_print_status(prob,iter,varxu,reject,change);
-	#     if (converged)
-	#         break;
-	#     end
-	# end
-	#
-	# if (nargout>0)
-	#     flag = scvx_exitcode(prob,iter,converged);
+	    scvx_print_status(prob,iter,varxu,reject,change);
+
+		if cvrg
+			break
+		end
 	end
+	# return exitcode
+	return -1 #scvx_exitcode(prob,varxu,reject)
 end
 
-function solve_socp!(prob::ScvxProblem,scale::ScvxScale)
+function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 
 	# get problem data
 	nx  = prob.pars.nx
 	nu  = prob.pars.nu
 	N   = prob.pars.N
 	wvc = prob.pars.wvc
-	tr  = prob.pars.tr
+	tr  = prob.tr
 
 	# scaling matrices
 	Sx  = scale.Sx
@@ -229,23 +226,35 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)
 	solver = () -> ECOS.Optimizer(verbose=0)
 	solve!(socp,solver)
 
+	# save solution data
 	prob.new_sol.state = Sx*(xb.value).+cx
 	prob.new_sol.control = Su*(ub.value).+cu
 	prob.new_sol.tf = Sp*(pb.value)+cp
 	prob.new_sol.vc = norm(vec(vc.value),1)
 
-	prob.new_sol.flag = -1
+	# compute max scaled change in state/control
+	varxu = 0.0
+	for k = 1:N
+   		tempx = norm((xb.value)[:,k] - iSx*(x_ref[:,k]-cx),Inf);
+   		tempu = norm((ub.value)[:,k] - iSu*(u_ref[:,k]-cu),Inf);
+   		varxu = maximum([varxu;tempx;tempu]);
+	end
 
+	prob.new_sol.flag = -1
+	return varxu
 end # solve_socp
 
 function scvx_update!(prob::ScvxProblem)
-	cost = opt_cost()
+	cost = opt_cost(prob.new_sol.state,
+					prob.new_sol.control,
+					prob.new_sol.tf,
+					prob.pars.N)
 	new_L = cost + prob.pars.wvc * prob.new_sol.vc
 	new_J = cost + prob.pars.wvc * sum(prob.new_sol.defects)
 
 	dL = prob.prv_J + new_L
 	dJ = prob.prv_J + new_J
-	tr = prob.pars.tr
+	tr = prob.tr
 	if dL>1e-12
 		# compute performance metric
 		ρ = dJ/dL
@@ -256,7 +265,7 @@ function scvx_update!(prob::ScvxProblem)
     		change = 'S'
 		else
     		reject = false;
-    		prob.last_J = new_J;
+    		prob.prv_J = new_J;
     		if ( ρ < prob.pars.ρ_1 )
         		# shrink
         		tr = tr / prob.pars.α
@@ -282,21 +291,53 @@ function scvx_update!(prob::ScvxProblem)
 	end
 
 	# replace updated trust region
-	prob.pars.tr = tr;
+	prob.tr = tr;
 
-	# if the step was rejected, replace the
+	# if the step was not rejected, update the solution
 	if !reject
-		set_prv_solution!(prob)
+		set_prv_solution!(prob,new_J)
 	end # if
-
+	return reject, change
 end #scvx_update!
 
-# function check_convergence()
-
-# end
-
-function set_prv_solution!(prob::ScvxProblem)
+function set_prv_solution!(prob::ScvxProblem,new_J::Float64)
 	prob.prv_sol = prob.new_sol
+	prob.prv_J = new_J
+	return nothing
+end
+
+function scvx_print_status(prob::ScvxProblem,iter::Integer,diff::Float64,
+							reject::Bool,change::Char)
+	vc = prob.new_sol.vc
+	tr = prob.tr
+	feas = prob.new_sol.feas
+	@printf "Iter: %02d | " iter
+	@printf "VC: %2.2e | " vc
+	@printf "TR: %2.2e | " tr
+	@printf "J: %2.2e | " prob.prv_J
+	@printf "max diff: %2.2e | " diff
+	@printf "feas: %d | " feas
+	@printf "update: %d" reject
+	@printf "%c\n" change
+	return nothing
+end
+
+function scvx_convergence(varxu::Float64,tol::Float64)
+	if varxu<tol
+		return true
+	else
+		return false
+	end # if
+end
+
+function scvx_exitcode(prob::ScvxProblem,converged::Bool)::Integer
+	# Possible exitcodes are:
+	#	0 : converged and feasible
+	# 	1 : reached max iterations and IS feasible
+	# 	2 : converged and IS NOT feasible
+	# 	3 : reached max iterations and IS NOT feasible
+
+	return -1
 end
 
 function disp_sol(sol::ScvxSolution,pars::ScvxParameters)
@@ -315,6 +356,7 @@ function disp_sol(sol::ScvxSolution,pars::ScvxParameters)
 	    end
 	    @printf "\n"
 	end
+	return nothing
 end
 
 function disp_Ad(sol::ScvxSolution,pars::ScvxParameters,rng::Integer=0)
@@ -337,6 +379,7 @@ function disp_Ad(sol::ScvxSolution,pars::ScvxParameters,rng::Integer=0)
 		end
 		print("\n")
 	end
+	return nothing
 end
 
 # end # module
