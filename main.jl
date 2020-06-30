@@ -67,6 +67,6 @@ ctrl = ScvxParameters(N,Nsub,nx,nu,iter_max,wvc,
 prob = scvx_initialize(bnds,ctrl,tr)
 
 # solve the Scvx problem
-scvx_solve!(prob)
+flag = scvx_solve!(prob)
 
 # output = solve(prob)

@@ -75,12 +75,11 @@ function drag(v,pars::T) where {T<:ModelParameters}
 end
 
 function opt_cost(x,u,t,N::Integer)
-	scale = 1e2;
 	J = 0.0;
 	for k = 1:N-1
 	    uk  = u[:,k];
 	    ukp = u[:,k+1];
 	    J += 0.5 * ( dot(uk,uk) + dot(ukp,ukp) );
 	end
-	return scale*J
+	return J
 end

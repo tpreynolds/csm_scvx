@@ -51,8 +51,12 @@ function scvx_initialize(bnds::ScvxBnds,
 	convexify!(init_sol,pars)
 	print(".")
 
+	# compute cost along initial guess
+	J = opt_cost(init_sol.state,init_sol.control,init_sol.tf,N)
+	J += pars.wvc * sum(init_sol.defects)
+
 	println("done.")
-	return ScvxProblem(bnds,pars,init_sol,tr)
+	return ScvxProblem(bnds,pars,init_sol,J,tr)
 end
 
 function init_straightline(v0,vf,N)::Array{Float64,2}
@@ -117,9 +121,10 @@ function scvx_set_scales(prob::ScvxProblem)::ScvxScale
 	return ScvxScale(Sx,cx,Su,cu,Sp,cp,iSx,iSu,iSp)
 end
 
-function scvx_solve!(prob::ScvxProblem)
+function scvx_solve!(prob::ScvxProblem)::Integer
 	# print intro
 	println("Solving...")
+	cvrg = false
 
 	# set scaling matrices
 	scale = scvx_set_scales(prob);
@@ -146,11 +151,10 @@ function scvx_solve!(prob::ScvxProblem)
 		end
 	end
 	# return exitcode
-	return -1 #scvx_exitcode(prob,varxu,reject)
+	return scvx_exitcode(prob,cvrg)
 end
 
 function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
-
 	# get problem data
 	nx  = prob.pars.nx
 	nu  = prob.pars.nu
@@ -240,7 +244,7 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
    		varxu = maximum([varxu;tempx;tempu]);
 	end
 
-	prob.new_sol.flag = -1
+	prob.new_sol.flag = Int(socp.status)
 	return varxu
 end # solve_socp
 
@@ -252,8 +256,8 @@ function scvx_update!(prob::ScvxProblem)
 	new_L = cost + prob.pars.wvc * prob.new_sol.vc
 	new_J = cost + prob.pars.wvc * sum(prob.new_sol.defects)
 
-	dL = prob.prv_J + new_L
-	dJ = prob.prv_J + new_J
+	dL = prob.prv_J - new_L
+	dJ = prob.prv_J - new_J
 	tr = prob.tr
 	if dL>1e-12
 		# compute performance metric
@@ -337,7 +341,19 @@ function scvx_exitcode(prob::ScvxProblem,converged::Bool)::Integer
 	# 	2 : converged and IS NOT feasible
 	# 	3 : reached max iterations and IS NOT feasible
 
-	return -1
+	if prob.new_sol.feas
+		if converged
+			return 0
+		else
+			return 1
+		end
+	else
+		if converged
+			return 2
+		else
+			return 3
+		end
+	end
 end
 
 function disp_sol(sol::ScvxSolution,pars::ScvxParameters)

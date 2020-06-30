@@ -101,6 +101,10 @@ mutable struct ScvxProblem
 	prv_J::Float64
 	tr::Float64
 end
-function ScvxProblem(bnds::ScvxBnds,pars::ScvxParameters,sol::ScvxSolution,tr::Float64)
-	ScvxProblem(bnds,pars,sol,sol,0.0,tr)
+function ScvxProblem(bnds::ScvxBnds,
+					 pars::ScvxParameters,
+					 sol::ScvxSolution,
+					 J::Float64,
+					 tr::Float64)
+	ScvxProblem(bnds,pars,sol,sol,J,tr)
 end
