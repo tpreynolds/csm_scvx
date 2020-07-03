@@ -1,5 +1,10 @@
 include("scvx.jl")
 include("model.jl")
+include("csm_plots.jl")
+
+# using PyCall, LaTeXStrings
+# import PyPlot
+# const plt = PyPlot
 
 # using .Scvx
 
@@ -69,4 +74,17 @@ prob = scvx_initialize(bnds,ctrl,tr)
 # solve the Scvx problem
 flag = scvx_solve!(prob)
 
-# output = solve(prob)
+# plot the results
+scvx_plot(prob)
+
+# fig = plt.figure(figsize=(8,6))
+# ax  = plt.gca()
+#
+# # Plot SCP solutions
+# plt.plot(1,1,label="Initializer", linewidth=2)
+# for iter = 2:10
+#     plt.plot(iter,iter,label="Iterate $(iter - 1)", linewidth=2)
+# end
+
+# plt.grid(alpha=0.3)
+# plt.draw()

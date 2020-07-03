@@ -1,5 +1,3 @@
-# module Scvx
-
 include("types.jl")
 include("utils.jl")
 include("convexify.jl")
@@ -10,12 +8,6 @@ using Printf
 using LinearAlgebra
 
 using .MyUtils
-# using .Convexify
-
-# export
-# 	initialize,
-# 	disp_sol,
-# 	disp_Ad
 
 function scvx_initialize(bnds::ScvxBnds,
 						 pars::ScvxParameters{<:ModelParameters},
@@ -397,5 +389,3 @@ function disp_Ad(sol::ScvxSolution,pars::ScvxParameters,rng::Integer=0)
 	end
 	return nothing
 end
-
-# end # module
