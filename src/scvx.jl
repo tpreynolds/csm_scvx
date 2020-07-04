@@ -242,8 +242,10 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 		socp.constraints += duk >= -tr
 		# socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
 
-		# add model specific path constraints
+		# add model specific convex path constraints
 		mdl_cvx_constraints!(socp,xk,uk,prob.pars.mdl_pars)
+		# add model specific nonconvex path constraints
+		mdl_ncvx_constraints!(socp,xk,uk,x_ref[:,k],u_ref[:,k],prob.pars.mdl_pars)
 	end
 
 	# solve the problem

@@ -6,9 +6,9 @@ struct QuadrotorParameters<:ModelParameters
 	u_nrm_max::Float64
 	u_nrm_min::Float64
 	tilt_max::Float64
-	# obsN::Integer
-	# obsH::Array{Float64,3}
-	# obsC::Array{Float64,2}
+	obsN::Integer
+	obsiH::Array{Float64,3}
+	obsC::Array{Float64,2}
 end
 
 function dynamics(t::Float64,x,u,t_grid,pars::T) where {T<:ModelParameters}
@@ -84,16 +84,32 @@ function mdl_cvx_constraints!(socp,xk,uk,pars::T) where T<:ModelParameters
 	return nothing
 end
 
-# function mdl_ncvx_constraints!(socp,xk,uk,pars)
-# 	# loop through nonconvex constraints and add approximations
-#
-# 	return nothing
-# end
-#
-# function obstacle_constraint(xk,pars)
-# 	# compute constraint value
-#
-# 	# compute constraint derivative
-#
-# 	return f,A
-# end
+function mdl_ncvx_constraints!(socp,xk,uk,xbk,ubk,pars::T) where T<:ModelParameters
+	# loop through nonconvex constraints and add approximations
+	for i = 1:pars.obsN
+		_,A,b = obstacle_constraint(xbk,pars,i)
+		socp.constraints += dot(A,xk)+b <= 0.0
+	end
+
+	return nothing
+end
+
+function obstacle_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
+	id_r = pars.id_r
+	rk 	 = xk[id_r]
+	# obstacle center & dimensions
+	iH = pars.obsiH[:,:,id]
+	c  = pars.obsC[:,id]
+	temp = iH*(rk-c)
+
+	# compute constraint value s.t. f(x)<=0
+	f = 1 - norm(temp)
+	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
+	A = zeros(6)
+	if norm(temp)>eps()
+		A[id_r] = -transpose(rk-c)*(transpose(iH)*iH)/norm(temp)
+	end
+	b = f - dot(A,xk)
+
+	return f,A,b
+end

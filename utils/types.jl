@@ -100,9 +100,9 @@ struct ScvxTrjSet
 	tf::Array{Float64,1}
 end
 function ScvxTrjSet(iter_max::Integer)
-	ScvxTrjSet(Array{Float64}(undef,(nx,N,iter_max)),
-			   Array{Float64}(undef,(nu,N,iter_max)),
-			   Array{Float64}(undef,(iter_max)))
+	ScvxTrjSet(Array{Float64}(undef,(nx,N,iter_max+1)),
+			   Array{Float64}(undef,(nu,N,iter_max+1)),
+			   Array{Float64}(undef,(iter_max+1)))
 end
 
 mutable struct ScvxProblem

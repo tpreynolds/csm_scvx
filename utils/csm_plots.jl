@@ -69,7 +69,8 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
     x   = prob.new_sol.state
     u   = prob.new_sol.control
     tf  = prob.new_sol.tf
-    scl = 1.0
+    circle = fmt.circle
+    scl = 0.3
 
     # integrate nonlinear dynamics
     t_grid = LinRange(0,tf,prob.pars.N)
@@ -79,6 +80,26 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
 
     fig = plt.figure(figsize=fmt.figsize)
     ax  = plt.gca()
+
+    # plot obstacles
+    for i = 1:pars.obsN
+        H = I(2)/pars.obsiH[1:2,1:2,i]
+        c = pars.obsC[1:2,i]
+
+        obs = H * circle .+ c
+        ax.plot(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.8,
+                linewidth=1,linestyle="-")
+        if i==1
+            ax.fill_between(obs[1,:],obs[2,:],
+                    color=fmt.col.red,alpha=0.1,
+                    linewidth=1,linestyle="-",label="Obstacle")
+            else
+            ax.fill_between(obs[1,:],obs[2,:],
+                    color=fmt.col.red,alpha=0.1,
+                    linewidth=1,linestyle="-")
+        end
+    end
 
     # plot discrete solution
     ax.plot(X[1,:],X[2,:],
@@ -90,17 +111,19 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
             marker="o",color=fmt.col.blue,linestyle="",
             markersize=fmt.markersize)
     # add thrust vectors
-    xs = [ x[1,1], x[1,1]+scl*u[1,1] ]
-    ys = [ x[2,1], x[2,1]+scl*u[2,1] ]
+    udir = u[1:2,1]/norm(u[1:2,1])
+    xs = [ x[1,1], x[1,1]+scl*udir[1] ]
+    ys = [ x[2,1], x[2,1]+scl*udir[2] ]
     lines = Any[collect(zip(xs,ys))]
     for k = 2:prob.pars.N
-        xs = [ x[1,k], x[1,k]+scl*u[1,k] ]
-        ys = [ x[2,k], x[2,k]+scl*u[2,k] ]
+        udir = u[1:2,k]/norm(u[1:2,k])
+        xs = [ x[1,k], x[1,k]+scl*udir[1] ]
+        ys = [ x[2,k], x[2,k]+scl*udir[2] ]
         push!(lines,collect(zip(xs,ys)))
     end
     horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
                                                     color=fmt.col.green,
-                                                    label="Thrust Vector",
+                                                    label="Thrust Direction",
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
 
@@ -201,6 +224,7 @@ end
 
 function csm_plot_quad_alltrjs(prob::ScvxProblem,fmt::CSMPlotFmt)
     x_all = prob.all_trj.state
+    circle = fmt.circle
     col1 = fmt.col.cyan
     col2 = fmt.col.magenta
     cols = zeros(3,prob.solved)
@@ -211,11 +235,25 @@ function csm_plot_quad_alltrjs(prob::ScvxProblem,fmt::CSMPlotFmt)
     fig = plt.figure(figsize=fmt.figsize)
     ax  = plt.gca()
 
+    # plot obstacles
+    for i = 1:pars.obsN
+        H = I(2)/pars.obsiH[1:2,1:2,i]
+        c = pars.obsC[1:2,i]
+
+        obs = H * circle .+ c
+        ax.plot(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.8,
+                linewidth=1,linestyle="-")
+        ax.fill_between(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.1,
+                linewidth=1,linestyle="-")
+    end
+
     # plot discrete solutions
     for iter = 1:prob.solved
         ax.plot(x_all[1,:,iter],x_all[2,:,iter],
                 label="Iteration $(iter)",
-                marker="o",color=cols[:,iter],linestyle="",
+                marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
     end
 
