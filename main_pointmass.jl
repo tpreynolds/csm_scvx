@@ -1,14 +1,6 @@
-include("scvx.jl")
-include("model.jl")
-include("csm_plots.jl")
-
-# using PyCall, LaTeXStrings
-# import PyPlot
-# const plt = PyPlot
-
-# using .Scvx
-
-println("Point Mass Example")
+include("src/scvx.jl")
+include("models/pointmass_mdl.jl")
+include("utils/csm_plots.jl")
 
 # parameters
 m = 1.0
@@ -17,8 +9,9 @@ Sd = 0.05
 ρ = 1.25
 id_r = 1:3
 id_v = 4:6
+v_max = 8.0
 
-pars = PointMassParameters(m,Cd,Sd,ρ,id_r,id_v)
+pars = PointMassParameters(m,Cd,Sd,ρ,id_r,id_v,v_max)
 
 # initial conditions
 t0_min = 0.0
@@ -36,7 +29,7 @@ xf_max = [ 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ]
 uf_min = [ NaN; NaN; NaN ]
 uf_max = [ NaN; NaN; NaN ]
 
-# path constraints
+# linear path constraints
 x_min = [ -10.0; -10.0; -1.0; -5.0; -5.0; -5.0 ]
 x_max = [ 10.0;  10.0; 25.0;  5.0;  5.0;  5.0 ]
 u_min = [ -2; -2; -2 ]
@@ -76,15 +69,3 @@ flag = scvx_solve!(prob)
 
 # plot the results
 scvx_plot(prob)
-
-# fig = plt.figure(figsize=(8,6))
-# ax  = plt.gca()
-#
-# # Plot SCP solutions
-# plt.plot(1,1,label="Initializer", linewidth=2)
-# for iter = 2:10
-#     plt.plot(iter,iter,label="Iterate $(iter - 1)", linewidth=2)
-# end
-
-# plt.grid(alpha=0.3)
-# plt.draw()

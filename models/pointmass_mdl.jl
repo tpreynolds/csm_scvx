@@ -5,21 +5,14 @@ struct PointMassParameters<:ModelParameters
 	ρ::Real
 	id_r::Array{Integer,1}
 	id_v::Array{Integer,1}
+	v_max::Float64
 end
 
 function dynamics(t::Float64,x,u,t_grid,pars::T) where {T<:ModelParameters}
-	r = x[pars.id_r]
-	v = x[pars.id_v]
-
+	# interpolate controls
 	ut = interp_vec(t,u,t_grid)
-	fD, = drag(v,pars)
-	g, = gravity(r)
-
-	dr = v
-	dv = (1/pars.m)*(ut+fD) + g
-	dx = [ dr; dv ]
-
-	return dx
+	# return using regular dynamics function
+	return dynamics(t,x,ut,pars)
 end # dynamics for integration
 
 function dynamics(t::Float64,x,u,pars::T) where {T<:ModelParameters}
@@ -83,3 +76,25 @@ function opt_cost(x,u,t,N::Integer)
 	end
 	return J
 end
+
+function mdl_cvx_constraints!(socp,xk,uk,pars::T) where T<:ModelParameters
+	id_v  = pars.id_v
+	v_max = pars.v_max
+	vk = xk[id_v]
+	socp.constraints += norm(vk) - v_max <= 0.0
+	return nothing
+end
+
+# function mdl_ncvx_constraints!(socp,xk,uk,pars)
+# 	# loop through nonconvex constraints and add approximations
+#
+# 	return nothing
+# end
+#
+# function obstacle_constraint(xk,pars)
+# 	# compute constraint value
+#
+# 	# compute constraint derivative
+#
+# 	return f,A
+# end

@@ -1,4 +1,3 @@
-abstract type Model end
 abstract type ModelParameters end
 
 struct ScvxParameters{T<:ModelParameters}
@@ -80,7 +79,9 @@ mutable struct ScvxSolution
 	feas::Bool
 	flag::Integer
 end
-function ScvxSolution(x::Array{Float64,2},u::Array{Float64,2},t::Float64,nx::Integer,nu::Integer,N::Integer)
+function ScvxSolution(x::Array{Float64,2},
+					  u::Array{Float64,2},t::Float64,
+					  nx::Integer,nu::Integer,N::Integer)
 	ScvxSolution(x,u,t,
 		Array{Float64}(undef,(nx,nx,N-1)),
 		Array{Float64}(undef,(nx,nu,N-1)),
@@ -93,18 +94,32 @@ function ScvxSolution(x::Array{Float64,2},u::Array{Float64,2},t::Float64,nx::Int
 		-1)
 end
 
+struct ScvxTrjSet
+	state::Array{Float64,3}
+	control::Array{Float64,3}
+	tf::Array{Float64,1}
+end
+function ScvxTrjSet(iter_max::Integer)
+	ScvxTrjSet(Array{Float64}(undef,(nx,N,iter_max)),
+			   Array{Float64}(undef,(nu,N,iter_max)),
+			   Array{Float64}(undef,(iter_max)))
+end
+
 mutable struct ScvxProblem
 	bnds::ScvxBnds
 	pars::ScvxParameters
 	prv_sol::ScvxSolution
 	new_sol::ScvxSolution
+	all_trj::ScvxTrjSet
 	prv_J::Float64
 	tr::Float64
+	solved::Integer
 end
 function ScvxProblem(bnds::ScvxBnds,
 					 pars::ScvxParameters,
 					 sol::ScvxSolution,
 					 J::Float64,
 					 tr::Float64)
-	ScvxProblem(bnds,pars,sol,sol,J,tr)
+	 all_sol = ScvxTrjSet(pars.iter_max);
+	ScvxProblem(bnds,pars,sol,sol,all_sol,J,tr,-1)
 end

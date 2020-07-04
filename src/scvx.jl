@@ -1,5 +1,5 @@
-include("types.jl")
-include("utils.jl")
+include("../utils/types.jl")
+include("../utils/utils.jl")
 include("convexify.jl")
 
 using Convex
@@ -29,10 +29,8 @@ function scvx_initialize(bnds::ScvxBnds,
 	    xf[k] = 0.5*(xf_min[k] + xf_max[k])
 	end
 	x = init_straightline(x0,xf,N)
-
 	# initial control guess using straight line interpolation
 	u = init_straightline(bnds.path.u_min,bnds.path.u_min,N)
-
 	# initial time guess halfway between bounds
 	tf = 0.5 * (bnds.trgt.t_min + bnds.trgt.t_max)
 	print(".")
@@ -47,8 +45,12 @@ function scvx_initialize(bnds::ScvxBnds,
 	J = opt_cost(init_sol.state,init_sol.control,init_sol.tf,N)
 	J += pars.wvc * sum(init_sol.defects)
 
+	# initialize problem object
+	prob = ScvxProblem(bnds,pars,init_sol,J,tr)
+	# add initial trajectory to full list
+	push_trj!(prob,init_sol,0)
 	println("done.")
-	return ScvxProblem(bnds,pars,init_sol,J,tr)
+	return prob
 end
 
 function init_straightline(v0,vf,N)::Array{Float64,2}
@@ -137,11 +139,14 @@ function scvx_solve!(prob::ScvxProblem)::Integer
 
 	    # print iterate information
 	    scvx_print_status(prob,iter,varxu,reject,change);
-
+		# add the updated solution to the trajectory list
+		push_trj!(prob,prob.prv_sol,iter)
 		if cvrg
+			prob.solved = iter
 			break
 		end
 	end
+
 	# return exitcode
 	return scvx_exitcode(prob,cvrg)
 end
@@ -187,9 +192,25 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 	# constraints
 	socp.constraints += (Sx*xb[:,1]+cx) <= prob.bnds.init.x_max
 	socp.constraints += (Sx*xb[:,1]+cx) >= prob.bnds.init.x_min
+	for i = 1:nu
+		if !isnan(prob.bnds.init.u_max[i])
+			socp.constraints += (Su[i,i]*ub[i,1]+cu[i]) <= prob.bnds.init.u_max[i]
+		end
+		if !isnan(prob.bnds.init.u_min[i])
+			socp.constraints += (Su[i,i]*ub[i,1]+cu[i]) >= prob.bnds.init.u_min[i]
+		end
+	end
 
 	socp.constraints += (Sx*xb[:,N]+cx) <= prob.bnds.trgt.x_max
 	socp.constraints += (Sx*xb[:,N]+cx) >= prob.bnds.trgt.x_min
+	for i = 1:nu
+		if !isnan(prob.bnds.init.u_max[i])
+			socp.constraints += (Su[i,i]*ub[i,N]+cu[i]) <= prob.bnds.trgt.u_max[i]
+		end
+		if !isnan(prob.bnds.init.u_min[i])
+			socp.constraints += (Su[i,i]*ub[i,N]+cu[i]) >= prob.bnds.trgt.u_min[i]
+		end
+	end
 
 	socp.constraints += (Sp*pb+cp) <= prob.bnds.trgt.t_max
 	socp.constraints += (Sp*pb+cp) >= prob.bnds.trgt.t_min
@@ -215,7 +236,14 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 		socp.constraints += uk >= prob.bnds.path.u_min
 
 		# trust region
-		socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
+		socp.constraints += dxk <= tr
+		socp.constraints += dxk >= -tr
+		socp.constraints += duk <= tr
+		socp.constraints += duk >= -tr
+		# socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
+
+		# add model specific path constraints
+		mdl_cvx_constraints!(socp,xk,uk,prob.pars.mdl_pars)
 	end
 
 	# solve the problem
@@ -265,29 +293,32 @@ function scvx_update!(prob::ScvxProblem)
     		if ( ρ < prob.pars.ρ_1 )
         		# shrink
         		tr = tr / prob.pars.α
-        		change = 'S';
+        		change = 'S'
     		elseif ( (ρ >= prob.pars.ρ_1) && (ρ < prob.pars.ρ_2) )
 				# keep
-        		change = 'K';
+        		change = 'K'
     		else
         		# grow
-        		tr = tr * prob.pars.β;
-        		change = 'G';
+        		tr = tr * prob.pars.β
+        		change = 'G'
     		end #if
 		end #if
+	else
+		reject = false
+		change = 'K'
 	end #if
 
 	# saturate trust region to lower/upper bound
 	if (tr < prob.pars.tr_lb)
-	    tr = prob.pars.tr_lb;
-	    change = 'L';
+	    tr = prob.pars.tr_lb
+	    change = 'L'
 	elseif (tr > prob.pars.tr_ub)
-	    tr = prob.pars.tr_ub;
-	    change = 'U';
+	    tr = prob.pars.tr_ub
+	    change = 'U'
 	end
 
 	# replace updated trust region
-	prob.tr = tr;
+	prob.tr = tr
 
 	# if the step was not rejected, update the solution
 	if !reject
@@ -299,6 +330,19 @@ end #scvx_update!
 function set_prv_solution!(prob::ScvxProblem,new_J::Float64)
 	prob.prv_sol = prob.new_sol
 	prob.prv_J = new_J
+	return nothing
+end
+
+function push_trj!(prob::ScvxProblem,sol::ScvxSolution,iter::Integer)
+	if iter==0
+		prob.all_trj.state[:,:,1] = sol.state
+		prob.all_trj.control[:,:,1] = sol.control
+		prob.all_trj.tf[1] = sol.tf
+	else
+		prob.all_trj.state[:,:,iter+1] = sol.state
+		prob.all_trj.control[:,:,iter+1] = sol.control
+		prob.all_trj.tf[iter+1] = sol.tf
+	end
 	return nothing
 end
 
@@ -382,6 +426,54 @@ function disp_Ad(sol::ScvxSolution,pars::ScvxParameters,rng::Integer=0)
 					@printf "%5.4f, " sol.Ad[i,j,k]
 				else
 					@printf "%5.4f\n" sol.Ad[i,j,k]
+				end
+			end
+		end
+		print("\n")
+	end
+	return nothing
+end
+
+function disp_Bdm(sol::ScvxSolution,pars::ScvxParameters,rng::Integer=0)
+	nx = pars.nx
+	nu = pars.nu
+	if rng==0
+	    rng = 1:pars.N-1
+	end
+	println("Discrete B^- Matrices")
+	println("===================")
+	for k ∈ rng
+		@printf "Interval %02d\n" k
+		for i = 1:nx
+			for j=1:nu
+				if j < nu
+					@printf "%5.4f, " sol.Bdm[i,j,k]
+				else
+					@printf "%5.4f\n" sol.Bdm[i,j,k]
+				end
+			end
+		end
+		print("\n")
+	end
+	return nothing
+end
+
+function disp_Bdp(sol::ScvxSolution,pars::ScvxParameters,rng::Integer=0)
+	nx = pars.nx
+	nu = pars.nu
+	if rng==0
+	    rng = 1:pars.N-1
+	end
+	println("Discrete B^+ Matrices")
+	println("===================")
+	for k ∈ rng
+		@printf "Interval %02d\n" k
+		for i = 1:nx
+			for j=1:nu
+				if j < nu
+					@printf "%5.4f, " sol.Bdp[i,j,k]
+				else
+					@printf "%5.4f\n" sol.Bdp[i,j,k]
 				end
 			end
 		end
