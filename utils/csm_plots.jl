@@ -58,28 +58,39 @@ function CSMPlotFmt()
 end
 
 function csm_plots_quad(prob::ScvxProblem)
+    # integrate nonlinear dynamics
+    t_grid = LinRange(0,prob.new_sol.tf,prob.pars.N)
+    T_grid = LinRange(0,prob.new_sol.tf,250)
+    x0     = prob.new_sol.state[:,1]
+    u      = prob.new_sol.control
+    f(t,y) = dynamics(t,y,u,t_grid,prob.pars.mdl_pars)
+    X      = rk4(f,T_grid,x0)
+
     fmt = CSMPlotFmt()
-    csm_plot_quad_trj(prob,fmt)
-    csm_plot_quad_tilt(prob,fmt)
+    csm_plot_quad_trj(prob,fmt,X)
+    csm_plot_quad_tilt(prob,fmt,X)
     csm_plot_quad_accel(prob,fmt)
     csm_plot_quad_alltrjs(prob,fmt)
 end
 
-function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
+function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
     x   = prob.new_sol.state
     u   = prob.new_sol.control
     tf  = prob.new_sol.tf
     circle = fmt.circle
     scl = 0.3
 
-    # integrate nonlinear dynamics
-    t_grid = LinRange(0,tf,prob.pars.N)
-    x0     = x[:,1]
-    f(t,y) = dynamics(t,y,u,t_grid,prob.pars.mdl_pars)
-    X      = rk4(f,t_grid,x0)
-
+    # create figure and sets of axes
     fig = plt.figure(figsize=fmt.figsize)
     ax  = plt.gca()
+    axins1 = ax.inset_axes([0.725, 0.05, 0.25, 0.25])
+    x1, x2, y1, y2 = 0.3, 0.8, 1.75, 2.5
+    axins1.set_xlim(x1, x2)
+    axins1.set_ylim(y1, y2)
+    axins2 = ax.inset_axes([0.725, 0.375, 0.25, 0.25])
+    x1, x2, y1, y2 = 2.2, 2.6, 4.4, 5.2
+    axins2.set_xlim(x1, x2)
+    axins2.set_ylim(y1, y2)
 
     # plot obstacles
     for i = 1:pars.obsN
@@ -88,6 +99,12 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
 
         obs = H * circle .+ c
         ax.plot(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.8,
+                linewidth=1,linestyle="-")
+        axins1.plot(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.8,
+                linewidth=1,linestyle="-")
+        axins2.plot(obs[1,:],obs[2,:],
                 color=fmt.col.red,alpha=0.8,
                 linewidth=1,linestyle="-")
         if i==1
@@ -99,6 +116,12 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
                     color=fmt.col.red,alpha=0.1,
                     linewidth=1,linestyle="-")
         end
+        axins1.fill_between(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.1,
+                linewidth=1,linestyle="-")
+        axins2.fill_between(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.1,
+                linewidth=1,linestyle="-")
     end
 
     # plot discrete solution
@@ -107,6 +130,22 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
             color=fmt.col.blue,linestyle="-",
             linewidth=fmt.lw)
     ax.plot(x[1,:],x[2,:],
+            label="SCvx solution",
+            marker="o",color=fmt.col.blue,linestyle="",
+            markersize=fmt.markersize)
+    axins1.plot(X[1,:],X[2,:],
+            label="Integrated Trajectory",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    axins1.plot(x[1,:],x[2,:],
+            label="SCvx solution",
+            marker="o",color=fmt.col.blue,linestyle="",
+            markersize=fmt.markersize)
+    axins2.plot(X[1,:],X[2,:],
+            label="Integrated Trajectory",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    axins2.plot(x[1,:],x[2,:],
             label="SCvx solution",
             marker="o",color=fmt.col.blue,linestyle="",
             markersize=fmt.markersize)
@@ -126,6 +165,13 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
                                                     label="Thrust Direction",
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
+    # axins1.add_collection(horz_thrust_vecs)
+    # axins2.add_collection(horz_thrust_vecs)
+
+    # including these will add some gray lines that point to where the insets
+    # come from
+    # ax.indicate_inset_zoom(axins1)
+    # ax.indicate_inset_zoom(axins2)
 
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     plt.xlim(-0.5,3)
@@ -141,11 +187,13 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt)
     return nothing
 end
 
-function csm_plot_quad_tilt(prob::ScvxProblem,fmt::CSMPlotFmt)
-    u = prob.new_sol.control
+function csm_plot_quad_tilt(prob::ScvxProblem,fmt::CSMPlotFmt,X)
+    u  = prob.new_sol.control
     tf = prob.new_sol.tf
-    N = prob.pars.N
-    T = LinRange(0,tf,N)
+    N  = prob.pars.N
+    Ni = size(X,2)
+    T  = LinRange(0,tf,N)
+    Ti = LinRange(0,tf,Ni)
     tilt_max = rad2deg(prob.pars.mdl_pars.tilt_max)
 
     fig = plt.figure(figsize=fmt.figsize)
@@ -157,13 +205,21 @@ function csm_plot_quad_tilt(prob::ScvxProblem,fmt::CSMPlotFmt)
                     color=fmt.col.red)
     ax.fill_between([0;tf],[tilt_max;tilt_max],[tilt_max+10;tilt_max+10],
                     facecolor=fmt.col.red,alpha=0.1)
-    # add discrete tilt angles
-    tilt = zeros(N)
+    # add discrete/continuous tilt angles
+    tilt_d = zeros(N)
+    tilt_c = zeros(Ni)
     for k = 1:N
-        umag = norm(u[1:3,k])
-        tilt[k] = acosd(u[3,k]/umag)
+        umag      = norm(u[1:3,k])
+        tilt_d[k] = acosd(u[3,k]/umag)
     end
-    ax.plot(T,tilt,color=fmt.col.blue,marker="o",
+    for k = 1:Ni
+        uk        = interp_vec(Ti[k],u,T)
+        umag      = norm(uk[1:3])
+        tilt_c[k] = acosd(uk[3]/umag)
+    end
+    ax.plot(Ti,tilt_c,color=fmt.col.blue,
+                linestyle="-",linewidth=fmt.lw)
+    ax.plot(T,tilt_d,color=fmt.col.blue,marker="o",
                 markersize=fmt.markersize,
                 linestyle="none")
 
