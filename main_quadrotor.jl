@@ -29,8 +29,8 @@ u0_min = [ 0.0; 0.0; 9.81; NaN ]
 u0_max = [ 0.0; 0.0; 9.81; NaN ]
 
 # final conditions
-tf_min = 2.0
-tf_max = 3.0
+tf_min = 2.5
+tf_max = 2.5
 xf_min = [ 2.5; 6.0; 0.0; 0.0; 0.0; 0.0 ]
 xf_max = [ 2.5; 6.0; 0.0; 0.0; 0.0; 0.0 ]
 uf_min = [ 0.0; 0.0; 9.81; NaN ]
