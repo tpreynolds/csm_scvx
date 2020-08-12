@@ -5,7 +5,10 @@ import Base.+
 export
 	rk4,
 	interp_vec,
-	skew
+	skew,
+	quat_mult,
+	quat_skew,
+	quat_skew_star
 
 function +(i::Int64,rng::UnitRange{Int64})
 	return UnitRange{Int64}(rng.start+i,rng.stop+i)
@@ -55,7 +58,7 @@ function rk4(x::Array{Float64,1},f::Function,tspan)
 	return x
 end
 
-function skew(v::Vector{Number})
+function skew(v::Vector{Float64})
 	return [0. -v[3] v[2]; v[3] 0. -v[1]; -v[2] v[1] 0. ]
 end
 
@@ -76,17 +79,64 @@ function get_interval(t::Float64,t_grid::Union{Array{Float64,1},LinRange{Float64
 	if t>t_grid[end]
 	    error("time %f is greater than the grid upper value of %f",t,t_grid[end])
 	end
-	k = 0;
+	k = 0
 	while t>t_grid[k+1]
-	    k += 1;
+	    k += 1
 	end
 	if k==0
-	    interval = 1;
+	    interval = 1
 	else
-		interval = k;
+		interval = k
 	end
 
- 	return interval;
+ 	return interval
 end
 
+### QUATERNION UTILITIES
+### Using Hamiltonian scalar last convention
+
+function quat_mult(q::Vector{Float64},p::Vector{Float64})
+	if length(q)==3
+		q = [ q; 0 ]
+	elseif length(q)!=4
+		error("Quaternion input 1 must be of length 3 or 4")
+	end
+	if length(p)==3
+		p = [ p; 0 ]
+	elseif length(q)!=4
+		error("Quaternion input 2 must be of length 3 or 4")
+	end
+
+	return [ q[4]*p[1]-q[3]*p[2]+q[2]*p[3]+q[1]*p[4];
+			 q[3]*p[1]+q[4]*p[2]-q[1]*p[3]+q[2]*p[4];
+			-q[2]*p[1]+q[1]*p[2]+q[4]*p[3]+q[3]*p[4];
+			-q[1]*p[1]-q[2]*p[2]-q[3]*p[3]+q[4]*p[4] ]
 end
+
+function quat_skew(q::Vector{Float64})
+	if length(q)==3
+		q = [ q; 0 ]
+	elseif length(q)!=4
+		error("Quaternion input must be of length 3 or 4")
+	end
+
+	return [ q[4] -q[3]  q[2] q[1];
+			 q[3]  q[4] -q[1] q[2];
+			-q[2]  q[1]  q[4] q[3];
+			-q[1] -q[2] -q[3] q[4] ]
+end
+
+function quat_skew_star(q::Vector{Float64})
+	if length(q)==3
+		q = [ q; 0 ]
+	elseif length(q)!=4
+		error("Quaternion input must be of length 3 or 4")
+	end
+
+	return [ q[4]  q[3] -q[2] q[1];
+			-q[3]  q[4]  q[1] q[2];
+			 q[2] -q[1]  q[4] q[3];
+			-q[1] -q[2] -q[3] q[4] ]
+end
+
+end # module
