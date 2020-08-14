@@ -34,6 +34,7 @@ struct CSMPlotFmt
     markersize::Integer
     gridalpha::Float64
     figsize::Tuple{Int64,Int64}
+    dblwide::Tuple{Int64,Int64}
     lw::Integer
     labelsize::Integer
     fontsize::Integer
@@ -49,12 +50,13 @@ function CSMPlotFmt()
     markersize  = 5
     gridalpha   = 0.3
     figsize     = (8,6)
+    dblwide     = (12,6)
     linewidth   = 2
     labelsize   = 14
     fontsize    = 16
     titlesize   = 18
     return CSMPlotFmt(col,circle,markersize,gridalpha,
-                        figsize,linewidth,labelsize,fontsize,titlesize)
+                        figsize,dblwide,linewidth,labelsize,fontsize,titlesize)
 end
 
 function csm_plots_quad(prob::ScvxProblem)
@@ -71,6 +73,25 @@ function csm_plots_quad(prob::ScvxProblem)
     csm_plot_quad_tilt(prob,fmt,X)
     csm_plot_quad_accel(prob,fmt)
     csm_plot_quad_alltrjs(prob,fmt)
+    return nothing
+end
+
+function csm_plots_freeflyer(prob::ScvxProblem)
+    # integrate nonlinear dynamics
+    t_grid = LinRange(0,prob.new_sol.tf,prob.pars.N)
+    T_grid = LinRange(0,prob.new_sol.tf,250)
+    x0     = prob.new_sol.state[:,1]
+    u      = prob.new_sol.control
+    f(t,y) = dynamics(t,y,u,t_grid,prob.pars.mdl_pars)
+    X      = rk4(f,T_grid,x0)
+
+
+    fmt = CSMPlotFmt()
+    csm_plot_freeflyer_trj(prob,fmt,X)
+    csm_plot_freeflyer_ctrl(prob,fmt,u)
+    # csm_plot_freeflyer_accel(prob,fmt)
+    # csm_plot_freeflyer_alltrjs(prob,fmt)
+    return nothing
 end
 
 function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
@@ -323,4 +344,135 @@ function csm_plot_quad_alltrjs(prob::ScvxProblem,fmt::CSMPlotFmt)
     plt.tight_layout()
     ax.legend(fontsize=fmt.fontsize)
     plt.show()
+end
+
+function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
+    x   = prob.new_sol.state
+    u   = prob.new_sol.control
+    tf  = prob.new_sol.tf
+    circle = fmt.circle
+    scl = 0.3
+
+    fig = plt.figure(figsize=fmt.dblwide)
+    ax = plt.subplot(121)
+    ## Plot X-Y plane
+    # plot obstacles
+    for i = 1:pars.obsN
+        H = I(2)/pars.obsiH[1:2,1:2,i]
+        c = pars.obsC[1:2,i]
+
+        obs = H * circle .+ c
+        ax.plot(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.8,
+                linewidth=1,linestyle="-")
+        if i==1
+            ax.fill_between(obs[1,:],obs[2,:],
+                    color=fmt.col.red,alpha=0.1,
+                    linewidth=1,linestyle="-",label="Obstacle")
+            else
+            ax.fill_between(obs[1,:],obs[2,:],
+                    color=fmt.col.red,alpha=0.1,
+                    linewidth=1,linestyle="-")
+        end
+    end
+
+    # plot discrete solution
+    ax.plot(X[1,:],X[2,:],
+            label="Integrated Trajectory",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(x[1,:],x[2,:],
+            label="SCvx solution",
+            marker="o",color=fmt.col.blue,linestyle="",
+            markersize=fmt.markersize)
+
+    # add thrust vectors
+    udir = u[:,1]/norm(u[:,1])
+    xs = [ x[1,1], x[1,1]+scl*udir[1] ]
+    ys = [ x[2,1], x[2,1]+scl*udir[2] ]
+    lines = Any[collect(zip(xs,ys))]
+    for k = 2:prob.pars.N
+        udir = u[:,k]/norm(u[:,k])
+        xs = [ x[1,k], x[1,k]+scl*udir[1] ]
+        ys = [ x[2,k], x[2,k]+scl*udir[2] ]
+        push!(lines,collect(zip(xs,ys)))
+    end
+    horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
+                                                    color=fmt.col.green,
+                                                    label="Thrust Direction",
+                                                    linewidth=fmt.lw)
+    ax.add_collection(horz_thrust_vecs)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(6,12)
+    ax.set_ylim(-2,8)
+    ax.set_xlabel("X [m]",fontsize=fmt.fontsize)
+    ax.set_ylabel("Y [m]",fontsize=fmt.fontsize)
+    ax.grid(alpha=fmt.gridalpha)
+    ax.legend(fontsize=fmt.fontsize)
+
+    ## Plot Y-Z plane
+    ax = plt.subplot(122)
+    # plot obstacles
+    for i = 1:pars.obsN
+        H = I(2)/pars.obsiH[2:3,2:3,i]
+        c = pars.obsC[2:3,i]
+
+        obs = H * circle .+ c
+        ax.plot(obs[1,:],obs[2,:],
+                color=fmt.col.red,alpha=0.8,
+                linewidth=1,linestyle="-")
+        if i==1
+            ax.fill_between(obs[1,:],obs[2,:],
+                    color=fmt.col.red,alpha=0.1,
+                    linewidth=1,linestyle="-",label="Obstacle")
+            else
+            ax.fill_between(obs[1,:],obs[2,:],
+                    color=fmt.col.red,alpha=0.1,
+                    linewidth=1,linestyle="-")
+        end
+    end
+
+    # plot discrete solution
+    ax.plot(X[2,:],X[3,:],
+            label="Integrated Trajectory",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(x[2,:],x[3,:],
+            label="SCvx solution",
+            marker="o",color=fmt.col.blue,linestyle="",
+            markersize=fmt.markersize)
+
+    # add thrust vectors
+    udir = u[:,1]/norm(u[:,1])
+    xs = [ x[2,1], x[2,1]+scl*udir[2] ]
+    ys = [ x[3,1], x[3,1]+scl*udir[3] ]
+    lines = Any[collect(zip(xs,ys))]
+    for k = 2:prob.pars.N
+        udir = u[:,k]/norm(u[:,k])
+        xs = [ x[2,k], x[2,k]+scl*udir[2] ]
+        ys = [ x[3,k], x[3,k]+scl*udir[3] ]
+        push!(lines,collect(zip(xs,ys)))
+    end
+    horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
+                                                    color=fmt.col.green,
+                                                    label="Thrust Direction",
+                                                    linewidth=fmt.lw)
+    ax.add_collection(horz_thrust_vecs)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(-2,8)
+    ax.set_ylim(4,6)
+    ax.set_xlabel("Y [m]",fontsize=fmt.fontsize)
+    ax.set_ylabel("Z [m]",fontsize=fmt.fontsize)
+    # ax.legend(fontsize=fmt.fontsize)
+    ax.grid(alpha=fmt.gridalpha)
+
+    fig.suptitle("Final FreeFlyer Trajectory",fontsize=fmt.titlesize)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+    return nothing
+end
+
+function csm_plot_freeflyer_ctrl(prob::ScvxProblem,fmt::CSMPlotFmt,u)
+
 end

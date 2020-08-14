@@ -73,9 +73,11 @@ function opt_cost(x,u,t,N::Integer)
 	id_F = 1:3
 	id_M = 4:6
 	for k = 1:N-1
-	    Fk  = u[id_F,k];
-	    Fkp = u[id_F,k+1];
-	    J += 0.5 * ( norm(Fk,2) + norm(Fkp,2) );
+	    Fk  = u[id_F,k]
+	    Fkp = u[id_F,k+1]
+		Mk  = u[id_M,k]
+		Mkp = u[id_M,k+1]
+	    J += 0.5 * ( dot(Fk,Fk) + dot(Fkp,Fkp) + dot(Mk,Mk) + dot(Mkp,Mkp) )
 	end
 	return J
 end
@@ -94,8 +96,8 @@ function mdl_cvx_constraints!(socp,xk,uk,pars::T) where T<:ModelParameters
 	Mk = uk[pars.id_M]
 	# add norm constraints
 	socp.constraints += norm(rk,Inf) - r_nrm_max <= 0.0
-	# socp.constraints += norm(vk) - v_nrm_max <= 0.0
-	# socp.constraints += norm(wk) - w_nrm_max <= 0.0
+	socp.constraints += norm(vk) - v_nrm_max <= 0.0
+	socp.constraints += norm(wk) - w_nrm_max <= 0.0
 	socp.constraints += norm(Fk) - F_nrm_max <= 0.0
 	socp.constraints += norm(Mk) - M_nrm_max <= 0.0
 	return nothing
@@ -122,7 +124,7 @@ function obstacle_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 	# compute constraint value s.t. f(x)<=0
 	f = 1 - norm(temp)
 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
-	A = zeros(6)
+	A = zeros(13)
 	if norm(temp)>eps()
 		A[id_r] = -transpose(rk-c)*(transpose(iH)*iH)/norm(temp)
 	end
