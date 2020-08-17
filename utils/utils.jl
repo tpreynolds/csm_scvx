@@ -5,10 +5,13 @@ import Base.+
 export
 	rk4,
 	interp_vec,
+	rad2deg_arr!,
 	skew,
 	quat_mult,
 	quat_skew,
-	quat_skew_star
+	quat_skew_star,
+	quat_2_dcm,
+	quat_2_rpy
 
 function +(i::Int64,rng::UnitRange{Int64})
 	return UnitRange{Int64}(rng.start+i,rng.stop+i)
@@ -92,6 +95,14 @@ function get_interval(t::Float64,t_grid::Union{Array{Float64,1},LinRange{Float64
  	return interval
 end
 
+function rad2deg_arr!(v::Array{Float64,2})
+	for ii = 1:size(v,1)
+		for jj = 1:size(v,2)
+			v[ii,jj] = rad2deg(v[ii,jj])
+		end
+	end
+end
+
 ### QUATERNION UTILITIES
 ### Using Hamiltonian scalar last convention
 
@@ -137,6 +148,39 @@ function quat_skew_star(q::Vector{Float64})
 			-q[3]  q[4]  q[1] q[2];
 			 q[2] -q[1]  q[4] q[3];
 			-q[1] -q[2] -q[3] q[4] ]
+end
+
+function quat_2_dcm(q::Vector{Float64})
+	if length(q)!=4
+		error("Quaternion input must be of length 4")
+	end
+	q1 = q[1]
+	q2 = q[2]
+	q3 = q[3]
+	q4 = q[4]
+
+	return [ 2*q1^2+2*q4^2-1.0		2*(q1*q2+q3*q4) 	2*(q1*q3-q2*q4);
+	 	  	 2*(q1*q2-q3*q4) 		2*q2^2+2*q4^2-1.0 	2*(q2*q3+q1*q4);
+		  	 2*(q1*q3+q2*q4) 		2*(q2*q3-q1*q4) 	2*q3^2+2*q4^2-1.0 ]
+end
+
+function quat_2_rpy(q::Array{Float64,2})
+	if size(q,1)!=4
+		q = transpose(q)
+	end
+	if size(q,1)!=4
+		error("Quaternion input must have four rows")
+	end
+	N = size(q,2)
+	rpy = zeros(3,N)
+	for k = 1:size(q,2)
+		Rk = quat_2_dcm(q[:,k])
+
+		rpy[1,k] =  atan( Rk[2,3], Rk[3,3] ) # roll
+		rpy[2,k] = -asin( Rk[1,3] ) 		 # pitch
+		rpy[3,k] =  atan( Rk[1,2], Rk[1,1] ) # yaw
+	end
+	return rpy
 end
 
 end # module

@@ -88,8 +88,8 @@ function csm_plots_freeflyer(prob::ScvxProblem)
 
     fmt = CSMPlotFmt()
     csm_plot_freeflyer_trj(prob,fmt,X)
-    csm_plot_freeflyer_ctrl(prob,fmt,u)
-    # csm_plot_freeflyer_accel(prob,fmt)
+    csm_plot_freeflyer_ctrl(prob,fmt)
+    csm_plot_freeflyer_attitude(prob,fmt,X)
     # csm_plot_freeflyer_alltrjs(prob,fmt)
     return nothing
 end
@@ -131,7 +131,7 @@ function csm_plot_quad_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
         if i==1
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
-                    linewidth=1,linestyle="-",label="Obstacle")
+                    linewidth=1,linestyle="-",label=L"Obstacle")
             else
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
@@ -378,11 +378,11 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
 
     # plot discrete solution
     ax.plot(X[1,:],X[2,:],
-            label="Integrated Trajectory",
+            label=L"Integrated\ Trajectory",
             color=fmt.col.blue,linestyle="-",
             linewidth=fmt.lw)
     ax.plot(x[1,:],x[2,:],
-            label="SCvx solution",
+            label=L"SCvx\ solution",
             marker="o",color=fmt.col.blue,linestyle="",
             markersize=fmt.markersize)
 
@@ -399,14 +399,14 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
     end
     horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
                                                     color=fmt.col.green,
-                                                    label="Thrust Direction",
+                                                    label=L"Thrust\ Direction",
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(6,12)
     ax.set_ylim(-2,8)
-    ax.set_xlabel("X [m]",fontsize=fmt.fontsize)
-    ax.set_ylabel("Y [m]",fontsize=fmt.fontsize)
+    ax.set_xlabel(L"X\ [m]",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"Y\ [m]",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
     ax.legend(fontsize=fmt.fontsize)
 
@@ -424,7 +424,7 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
         if i==1
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
-                    linewidth=1,linestyle="-",label="Obstacle")
+                    linewidth=1,linestyle="-",label=L"Obstacle")
             else
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
@@ -434,11 +434,11 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
 
     # plot discrete solution
     ax.plot(X[2,:],X[3,:],
-            label="Integrated Trajectory",
+            label=L"Integrated\ Trajectory",
             color=fmt.col.blue,linestyle="-",
             linewidth=fmt.lw)
     ax.plot(x[2,:],x[3,:],
-            label="SCvx solution",
+            label=L"SCvx\ solution",
             marker="o",color=fmt.col.blue,linestyle="",
             markersize=fmt.markersize)
 
@@ -455,24 +455,217 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
     end
     horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
                                                     color=fmt.col.green,
-                                                    label="Thrust Direction",
+                                                    label=L"Thrust\ Direction",
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(-2,8)
     ax.set_ylim(4,6)
-    ax.set_xlabel("Y [m]",fontsize=fmt.fontsize)
-    ax.set_ylabel("Z [m]",fontsize=fmt.fontsize)
+    ax.set_xlabel(L"Y\ [m]",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"Z\ [m]",fontsize=fmt.fontsize)
     # ax.legend(fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
 
-    fig.suptitle("Final FreeFlyer Trajectory",fontsize=fmt.titlesize)
+    fig.suptitle(L"Final\ FreeFlyer\ Trajectory",fontsize=fmt.titlesize)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
     return nothing
 end
 
-function csm_plot_freeflyer_ctrl(prob::ScvxProblem,fmt::CSMPlotFmt,u)
+function csm_plot_freeflyer_ctrl(prob::ScvxProblem,fmt::CSMPlotFmt)
+    id_F = prob.pars.mdl_pars.id_F
+    id_M = prob.pars.mdl_pars.id_M
+    F = prob.new_sol.control[id_F,:]
+    M = prob.new_sol.control[id_M,:]
+    tf  = prob.new_sol.tf
+    T  = LinRange(0,tf,prob.pars.N)
 
+    F_nrm_max = prob.pars.mdl_pars.F_nrm_max
+    M_nrm_max = prob.pars.mdl_pars.M_nrm_max
+
+    # compute control input norms for plotting
+    F_nrm = zeros(prob.pars.N)
+    M_nrm = zeros(prob.pars.N)
+    for k = 1:prob.pars.N
+        F_nrm[k] = norm(F[:,k])
+        M_nrm[k] = norm(M[:,k])
+    end
+
+    fig = plt.figure(figsize=fmt.figsize)
+    ax = plt.subplot(121)
+    ax.plot(T,F[1,:],label=L"x",
+            color=fmt.col.red,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,F[2,:],label=L"y",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,F[3,:],label=L"z",
+            color=fmt.col.green,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,F_nrm,label=L"||F||",
+            color=[0;0;0],
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot([0;tf],[F_nrm_max;F_nrm_max],label=L"||F||_{2,max}",
+            color=[1;0;0],
+            linestyle="--",
+            linewidth=fmt.lw)
+
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(0,100)
+    # ax.set_ylim(4,6)
+    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"Thrust\ [N]",fontsize=fmt.fontsize)
+    # ax.legend(fontsize=fmt.fontsize)
+    ax.grid(alpha=fmt.gridalpha)
+    ax.legend(fontsize=fmt.fontsize)
+
+    ## Plot moment/torque trajectory
+    ax = plt.subplot(122)
+    ax.plot(T,M[1,:],label=L"x",
+            color=fmt.col.red,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,M[2,:],label=L"y",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,M[3,:],label=L"z",
+            color=fmt.col.green,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,M_nrm,label=L"||M||",
+            color=[0;0;0],
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot([0;tf],[M_nrm_max;M_nrm_max],label=L"||M||_{2,max}",
+            color=[1;0;0],
+            linestyle="--",
+            linewidth=fmt.lw)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(0,100)
+    # ax.set_ylim(4,6)
+    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"Torque\ [N]",fontsize=fmt.fontsize)
+    # ax.legend(fontsize=fmt.fontsize)
+    ax.grid(alpha=fmt.gridalpha)
+    ax.legend(fontsize=fmt.fontsize)
+
+    fig.suptitle(L"Final\ FreeFlyer\ Controls",fontsize=fmt.titlesize)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+    return nothing
+end
+
+function csm_plot_freeflyer_attitude(prob::ScvxProblem,fmt::CSMPlotFmt,X)
+    id_q = prob.pars.mdl_pars.id_q
+    id_w = prob.pars.mdl_pars.id_w
+    quat_d = prob.new_sol.state[id_q,:]
+    quat_c = X[id_q,:]
+    wB_d   = prob.new_sol.state[id_w,:]
+    wB_c   = X[id_w,:]
+    rpy_d  = quat_2_rpy(quat_d)
+    rpy_c  = quat_2_rpy(quat_c)
+
+    # convert to degrees
+    rad2deg_arr!(rpy_d)
+    rad2deg_arr!(rpy_c)
+    rad2deg_arr!(wB_d)
+    rad2deg_arr!(wB_c)
+
+    tf  = prob.new_sol.tf
+    T   = LinRange(0,tf,prob.pars.N)
+    Ti  = LinRange(0,tf,size(X,2))
+
+    w_nrm_max = prob.pars.mdl_pars.w_nrm_max
+
+    fig = plt.figure(figsize=fmt.figsize)
+    ax = plt.subplot(121)
+    ax.plot(T,rpy_d[1,:],
+            color=fmt.col.red,
+            linestyle="none",
+            marker="o",
+            markersize=fmt.markersize)
+    ax.plot(Ti,rpy_c[1,:],
+            label=L"roll",
+            color=fmt.col.red,
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,rpy_d[2,:],
+            color=fmt.col.green,
+            linestyle="none",
+            marker="o",
+            markersize=fmt.markersize)
+    ax.plot(Ti,rpy_c[2,:],
+            label=L"pitch",
+            color=fmt.col.green,
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,rpy_d[3,:],
+            color=fmt.col.blue,
+            linestyle="none",
+            marker="o",
+            markersize=fmt.markersize)
+    ax.plot(Ti,rpy_c[3,:],
+            label=L"yaw",
+            color=fmt.col.blue,
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(0,100)
+    ax.set_ylim(-180,180)
+    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"Attitude\ [deg]",fontsize=fmt.fontsize)
+    ax.grid(alpha=fmt.gridalpha)
+    ax.legend(fontsize=fmt.fontsize)
+
+    ax = plt.subplot(122)
+    ax.plot(T,wB_d[1,:],
+            color=fmt.col.red,
+            linestyle="none",
+            marker="o",
+            markersize=fmt.markersize,
+            linewidth=fmt.lw)
+    ax.plot(Ti,wB_c[1,:],
+            label=L"ω_x",
+            color=fmt.col.red,
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,wB_d[2,:],
+            color=fmt.col.green,
+            linestyle="none",
+            marker="o",
+            markersize=fmt.markersize,
+            linewidth=fmt.lw)
+    ax.plot(Ti,wB_c[2,:],
+            label=L"ω_y",
+            color=fmt.col.green,
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot(T,wB_d[3,:],
+            color=fmt.col.blue,
+            linestyle="none",
+            marker="o",
+            markersize=fmt.markersize,
+            linewidth=fmt.lw)
+    ax.plot(Ti,wB_c[3,:],
+            label=L"ω_z",
+            color=fmt.col.blue,
+            linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot([0;tf],[rad2deg(w_nrm_max);rad2deg(w_nrm_max)],label=L"||ω||_{∞,max}",
+            color=[1;0;0],linestyle="--",
+            linewidth=fmt.lw)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(0,100)
+    # ax.set_ylim(-1,180)
+    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"Angular Rate\ [deg/s]",fontsize=fmt.fontsize)
+    ax.grid(alpha=fmt.gridalpha)
+    ax.legend(fontsize=fmt.fontsize)
+
+    fig.suptitle(L"Final\ FreeFlyer\ Attitude",fontsize=fmt.titlesize)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+    return nothing
 end
