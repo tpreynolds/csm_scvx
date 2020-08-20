@@ -1,3 +1,5 @@
+include("ISS_mdl.jl")
+
 struct FreeFlyerParameters<:ModelParameters
 	id_r::Array{Integer,1}
 	id_v::Array{Integer,1}
@@ -15,6 +17,8 @@ struct FreeFlyerParameters<:ModelParameters
 	obsN::Integer
 	obsiH::Array{Float64,3}
 	obsC::Array{Float64,2}
+	kozN::Integer
+	koz::Array{PolygonalObstacle,1}
 end
 
 function dynamics(t::Float64,x,u,t_grid,pars::T) where {T<:ModelParameters}
@@ -79,7 +83,7 @@ function opt_cost(x,u,t,N::Integer)
 		Mkp = u[id_M,k+1]
 	    J += 0.5 * ( dot(Fk,Fk) + dot(Fkp,Fkp) + dot(Mk,Mk) + dot(Mkp,Mkp) )
 	end
-	return J
+	return 1e-1*J
 end
 
 function mdl_cvx_constraints!(socp,xk,uk,pars::T) where T<:ModelParameters
@@ -103,11 +107,16 @@ function mdl_cvx_constraints!(socp,xk,uk,pars::T) where T<:ModelParameters
 	return nothing
 end
 
-function mdl_ncvx_constraints!(socp,xk,uk,xbk,ubk,pars::T) where T<:ModelParameters
+function mdl_ncvx_constraints!(socp,xk,uk,xbk,ubk,vbk,pars::T) where T<:ModelParameters
 	# loop through nonconvex constraints and add approximations
 	for i = 1:pars.obsN
 		_,A,b = obstacle_constraint(xbk,pars,i)
-		socp.constraints += dot(A,xk)+b <= 0.0
+		socp.constraints += dot(A,xk)+b - vbk <= 0.0
+	end
+
+	for i = 1:pars.kozN
+		_,A,b = koz_constraint(xbk,pars,i)
+		socp.constraints += dot(A,xk)+b - vbk <= 0.0
 	end
 
 	return nothing
@@ -128,6 +137,24 @@ function obstacle_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 	if norm(temp)>eps()
 		A[id_r] = -transpose(rk-c)*(transpose(iH)*iH)/norm(temp)
 	end
+	b = f - dot(A,xk)
+
+	return f,A,b
+end
+
+function koz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
+	id_r = pars.id_r
+	rk 	 = xk[id_r]
+	obs  = pars.koz[id]
+	# compute signed distance & closest point to r on obstacle
+	sd, close_pt = signed_distance(rk,obs)
+	# compute constraint value s.t. f(x) <= 0
+	f = -sd
+	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
+	A = zeros(13)
+	# if abs(sd)>eps()
+		A[id_r] = -(rk-close_pt)/sd
+	# end
 	b = f - dot(A,xk)
 
 	return f,A,b

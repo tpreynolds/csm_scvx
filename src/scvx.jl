@@ -185,9 +185,10 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 	ub  = Variable(nu,N)
 	pb  = Variable(1)
 	vc  = Variable(nx,N-1)
+	vb = Variable(N)
 
 	# cost function
-	socp = minimize( opt_cost(xb,ub,pb,N) + wvc * norm_1(vec(vc)) )
+	socp = minimize( opt_cost(xb,ub,pb,N) + wvc * (norm_1(vec(vc)) + norm_1(vb)) )
 
 	# constraints
 	socp.constraints += (Sx*xb[:,1]+cx) <= prob.bnds.init.x_max
@@ -222,6 +223,7 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 		uk  = (Su*ubk+cu)
 		dxk = xbk - iSx * (x_ref[:,k]-cx)
 		duk = ubk - iSu * (u_ref[:,k]-cu)
+		vbk = vb[k]
 		# dynamics
 		if k<N
 			xbkp = xb[:,k+1]
@@ -240,12 +242,13 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 		socp.constraints += dxk >= -tr
 		socp.constraints += duk <= tr
 		socp.constraints += duk >= -tr
+		socp.constraints += vbk >= 0.0
 		# socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
 
 		# add model specific convex path constraints
 		mdl_cvx_constraints!(socp,xk,uk,prob.pars.mdl_pars)
 		# add model specific nonconvex path constraints
-		mdl_ncvx_constraints!(socp,xk,uk,x_ref[:,k],u_ref[:,k],prob.pars.mdl_pars)
+		mdl_ncvx_constraints!(socp,xk,uk,x_ref[:,k],u_ref[:,k],vbk,prob.pars.mdl_pars)
 	end
 
 	# solve the problem
@@ -256,7 +259,7 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 	prob.new_sol.state = Sx*(xb.value).+cx
 	prob.new_sol.control = Su*(ub.value).+cu
 	prob.new_sol.tf = Sp*(pb.value)+cp
-	prob.new_sol.vc = norm(vec(vc.value),1)
+	prob.new_sol.vc = norm(vec(vc.value),1) + norm(vec(vb.value),1)
 
 	# compute max scaled change in state/control
 	varxu = 0.0

@@ -25,8 +25,10 @@ obsc2 = [8.5;-0.04;5.0]
 obsc3 = [11.2;1.84;5.0]
 obsiH = cat(obsiH1,obsiH2,obsiH3;dims=3)
 obsC  = cat(obsc1,obsc2,obsc3;dims=2)
+kozN  = 14
+koz = ISS_koz(kozN);
 
-pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,obsN,obsiH,obsC)
+pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,obsN,obsiH,obsC,kozN,koz)
 
 # initial conditions
 t0_min = 0.0
@@ -55,7 +57,7 @@ N = 50
 Nsub = 15
 nx = 13
 nu = 6
-iter_max = 25
+iter_max = 20
 wvc = 1e4
 ρ_0 = 0.0
 ρ_1 = 0.1
@@ -64,7 +66,7 @@ wvc = 1e4
 β   = 2.0
 tr  = 0.5
 tr_lb = 0.001
-tr_ub = 10.
+tr_ub = 2.
 cvrg_tol = 1e-3
 feas_tol = 1e-2
 

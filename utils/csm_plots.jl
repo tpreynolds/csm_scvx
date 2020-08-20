@@ -59,6 +59,26 @@ function CSMPlotFmt()
                         figsize,dblwide,linewidth,labelsize,fontsize,titlesize)
 end
 
+function plt_rectangle(ax, center, widths;
+                           color="b", alpha=0.1, noFaceColor=false,
+                           label="None")
+    """
+    Plots a rectangle with a given center and total widths
+    arguments:  - center    - (2,) center
+                - widths    - (2,) total widths  from and to edges of rectangle
+    """
+    deltas = [widths[1], widths[2]]
+    bottom_left = (center[1] - deltas[1]/2.0, center[2] - deltas[2]/2.0)
+    rect = plt.matplotlib.patches.Rectangle((bottom_left[1],bottom_left[2]),
+                                             deltas[1],deltas[2],
+                                             linewidth=1,
+                                             edgecolor=color,
+                                             facecolor=color,
+                                             alpha=alpha)
+    ax.add_patch(rect)
+    return ax
+end
+
 function csm_plots_quad(prob::ScvxProblem)
     # integrate nonlinear dynamics
     t_grid = LinRange(0,prob.new_sol.tf,prob.pars.N)
@@ -375,6 +395,13 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
                     linewidth=1,linestyle="-")
         end
     end
+    # plot keepout zones
+    for i = 1:pars.kozN
+        obs = pars.koz[i]
+        center = obs.center[1:2]
+        widths = 2.0*[obs.dx;obs.dy]
+        ax = plt_rectangle(ax, center, widths, color=fmt.col.red, alpha=0.1, label="None")
+    end
 
     # plot discrete solution
     ax.plot(X[1,:],X[2,:],
@@ -403,8 +430,8 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
-    ax.set_xlim(6,12)
-    ax.set_ylim(-2,8)
+    ax.set_xlim(2,14)
+    ax.set_ylim(-3,10)
     ax.set_xlabel(L"X\ [m]",fontsize=fmt.fontsize)
     ax.set_ylabel(L"Y\ [m]",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
@@ -431,6 +458,14 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
                     linewidth=1,linestyle="-")
         end
     end
+
+    # plot keepout zones
+    # for i = 1:pars.kozN
+    #     obs = pars.koz[i]
+    #     center = obs.center[2:3]
+    #     widths = 2.0*[obs.dy;obs.dz]
+    #     ax = plt_rectangle(ax, center, widths, color=fmt.col.red, alpha=0.1, label="None")
+    # end
 
     # plot discrete solution
     ax.plot(X[2,:],X[3,:],
