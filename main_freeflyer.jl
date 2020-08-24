@@ -16,7 +16,7 @@ F_nrm_max = 72e-3
 M_nrm_max = 2e-3
 mass = 7.2
 inertia = diagm([0.1083,0.1083,0.1083])
-obsN = 3
+obsN = 0
 obsiH1 = diagm([1.0/0.3;1.0/0.3;1.0/0.3])
 obsiH2 = obsiH1
 obsiH3 = obsiH1
@@ -25,7 +25,7 @@ obsc2 = [8.5;-0.04;5.0]
 obsc3 = [11.2;1.84;5.0]
 obsiH = cat(obsiH1,obsiH2,obsiH3;dims=3)
 obsC  = cat(obsc1,obsc2,obsc3;dims=2)
-kozN  = 14
+kozN  = 12
 koz = ISS_koz(kozN);
 
 pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,obsN,obsiH,obsC,kozN,koz)
@@ -47,8 +47,8 @@ uf_min = [ NaN; NaN; NaN; NaN; NaN; NaN ]
 uf_max = [ NaN; NaN; NaN; NaN; NaN; NaN ]
 
 # linear path constraints
-x_min = [ -12.0; -12.0; -12.0; -0.5; -0.5; -0.5; -1.0; -1.0; -1.0; -1.0; -1.0; -1.0; -1.0 ]
-x_max = [  12.0;  12.0;  12.0;  0.5;  0.5;  0.5;  1.0;  1.0;  1.0;  1.0;  1.0;  1.0;  1.0 ]
+x_min = [ -12.0; -12.0; 0.0; -0.5; -0.5; -0.5; -1.0; -1.0; -1.0; -1.0; -1.0; -1.0; -1.0 ]
+x_max = [  12.0;  12.0; 6.0;  0.5;  0.5;  0.5;  1.0;  1.0;  1.0;  1.0;  1.0;  1.0;  1.0 ]
 u_min = [ -8e-2; -8e-2; -8e-2; -1e-2; -1e-2; -1e-2 ]
 u_max = [  8e-2;  8e-2;  8e-2;  1e-2;  1e-2;  1e-2 ]
 
@@ -57,14 +57,14 @@ N = 50
 Nsub = 15
 nx = 13
 nu = 6
-iter_max = 20
-wvc = 1e4
+iter_max = 30
+wvc = 1e3
 ρ_0 = 0.0
 ρ_1 = 0.1
-ρ_2 = 0.9
+ρ_2 = 0.8
 α   = 2.0
 β   = 2.0
-tr  = 0.5
+tr  = 2.0
 tr_lb = 0.001
 tr_ub = 2.
 cvrg_tol = 1e-3

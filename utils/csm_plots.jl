@@ -110,6 +110,7 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     csm_plot_freeflyer_trj(prob,fmt,X)
     csm_plot_freeflyer_ctrl(prob,fmt)
     csm_plot_freeflyer_attitude(prob,fmt,X)
+    csm_freeflyer_sd(prob,fmt,X)
     # csm_plot_freeflyer_alltrjs(prob,fmt)
     return nothing
 end
@@ -400,7 +401,11 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
         obs = pars.koz[i]
         center = obs.center[1:2]
         widths = 2.0*[obs.dx;obs.dy]
-        ax = plt_rectangle(ax, center, widths, color=fmt.col.red, alpha=0.1, label="None")
+        if i < 14
+            ax = plt_rectangle(ax, center, widths, color=fmt.col.red, alpha=0.1, label="None")
+        else
+            ax = plt_rectangle(ax, center, widths, color=fmt.col.green, alpha=0.1, label="None")
+        end
     end
 
     # plot discrete solution
@@ -430,8 +435,8 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
-    ax.set_xlim(2,14)
-    ax.set_ylim(-3,10)
+    ax.set_xlim(5,13)
+    ax.set_ylim(-3,8)
     ax.set_xlabel(L"X\ [m]",fontsize=fmt.fontsize)
     ax.set_ylabel(L"Y\ [m]",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
@@ -460,12 +465,12 @@ function csm_plot_freeflyer_trj(prob::ScvxProblem,fmt::CSMPlotFmt,X)
     end
 
     # plot keepout zones
-    # for i = 1:pars.kozN
-    #     obs = pars.koz[i]
-    #     center = obs.center[2:3]
-    #     widths = 2.0*[obs.dy;obs.dz]
-    #     ax = plt_rectangle(ax, center, widths, color=fmt.col.red, alpha=0.1, label="None")
-    # end
+    for i = 14:pars.kozN
+        obs = pars.koz[i]
+        center = obs.center[2:3]
+        widths = 2.0*[obs.dy;obs.dz]
+        ax = plt_rectangle(ax, center, widths, color=fmt.col.red, alpha=0.1, label="None")
+    end
 
     # plot discrete solution
     ax.plot(X[2,:],X[3,:],
@@ -702,5 +707,67 @@ function csm_plot_freeflyer_attitude(prob::ScvxProblem,fmt::CSMPlotFmt,X)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
+    return nothing
+end
+
+function csm_freeflyer_sd(prob::ScvxProblem,fmt::CSMPlotFmt,X)
+    id_r = prob.pars.mdl_pars.id_r
+    x  = prob.new_sol.state
+    tf = prob.new_sol.tf
+    N  = prob.pars.N
+    Ni = size(X,2)
+    T  = LinRange(0,tf,N)
+    Ti = LinRange(0,tf,Ni)
+
+    kozN = prob.pars.mdl_pars.kozN
+    koz  = prob.pars.mdl_pars.koz
+
+    # discrete
+    sd = zeros(N)
+    for k = 1:N
+        temp = zeros(kozN)
+        rk = x[id_r,k]
+        for i = 1:kozN
+            temp[i], = signed_distance(rk,koz[i])
+        end
+        sd[k] = minimum(temp)
+    end
+
+    # continuous
+    SD = zeros(Ni)
+    for k = 1:Ni
+        temp = zeros(kozN)
+        rk = X[id_r,k]
+        for i = 1:kozN
+            temp[i], = signed_distance(rk,koz[i])
+        end
+        SD[k] = minimum(temp)
+    end
+
+    fig = plt.figure(figsize=fmt.figsize)
+    ax  = plt.gca()
+
+    ax.plot([0;tf],[0;0],
+        color=fmt.col.red,
+        linestyle="--",
+        linewidth=fmt.lw)
+    ax.plot(Ti,SD,
+        color=fmt.col.blue,
+        linestyle="-",
+        linewidth=fmt.lw)
+    ax.plot(T,sd,
+        color=fmt.col.blue,
+        marker="o",
+        markersize=fmt.markersize,
+        linestyle="none")
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    plt.xlim(0,tf)
+    # plt.ylim(0,70)
+    plt.grid(alpha=fmt.gridalpha)
+    plt.title("Signed Distance",fontsize=fmt.titlesize)
+    plt.xlabel("Time [s]",fontsize=fmt.fontsize)
+    plt.ylabel(L"\min_i\;d_i(r)",fontsize=fmt.fontsize)
+    plt.tight_layout()
+    plt.show()
     return nothing
 end
