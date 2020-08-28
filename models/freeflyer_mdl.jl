@@ -149,11 +149,11 @@ function koz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 	# compute signed distance & closest point to r on obstacle
 	sd, close_pt = signed_distance(rk,obs)
 	# compute constraint value s.t. f(x) <= 0
-	f = -sd
+	f = -sd+eps()
 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
 	A = zeros(13)
 	# if abs(sd)>eps()
-		A[id_r] = -sign(sd)*(rk-close_pt)/sd
+		A[id_r] = (rk-close_pt)/f
 	# end
 	b = f - dot(A,xk)
 
