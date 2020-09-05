@@ -16,15 +16,15 @@ F_nrm_max = 72e-3
 M_nrm_max = 2e-3
 mass = 7.2
 inertia = diagm([0.1083,0.1083,0.1083])
-obsN = 0
+obsN = 3
 obsiH1 = diagm([1.0/0.3;1.0/0.3;1.0/0.3])
 obsiH2 = obsiH1
 obsiH3 = obsiH1
 obsc1 = [11.3;3.8;4.8]
-obsc2 = [8.5;-0.04;5.0]
 obsc3 = [11.2;1.84;5.0]
-obsiH = cat(obsiH1,obsiH2,obsiH3;dims=3)
-obsC  = cat(obsc1,obsc2,obsc3;dims=2)
+obsc2 = [8.5;-0.15;5.0]
+obsiH = cat(obsiH1,obsiH2,obsiH3;dims=3) # obsiH2
+obsC  = cat(obsc1,obsc2,obsc3;dims=2) # obsc1
 kozN  = 24
 koz = ISS_koz(kozN);
 
@@ -66,7 +66,7 @@ wvc = 1e3
 β   = 2.0
 tr  = 0.5
 tr_lb = 0.001
-tr_ub = 2.
+tr_ub = 5.
 cvrg_tol = 1e-3
 feas_tol = 1e-2
 

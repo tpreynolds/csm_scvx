@@ -72,6 +72,42 @@ function linearize(t::Float64,x,u,pars::T) where {T<:ModelParameters}
 	return A, B
 end
 
+function init_solution(bnds::ScvxBnds,N::Integer)
+
+	# initial state guess using straight line interpolation
+	x0_min = bnds.init.x_min
+	x0_max = bnds.init.x_max
+	xf_min = bnds.trgt.x_min
+	xf_max = bnds.trgt.x_max
+	x0 = zeros(13,1)
+	xf = zeros(13,1)
+	for k = 1:13
+		x0[k] = 0.5*(x0_min[k] + x0_max[k])
+		xf[k] = 0.5*(xf_min[k] + xf_max[k])
+	end
+
+	# start with a straightline
+	x = init_straightline(x0,xf,N)
+	# update the position to be an "elbow"
+	N1 = Integer(floor(N/2))
+	N2 = N - N1
+	r1 = zeros(3,N1)
+	r2 = zeros(3,N2)
+	rm = [ xf[1]; x0[2]; 0.5*(x0[3]+xf[3]) ]
+	for k = 1:3
+		r1[k,:] = LinRange(x0[k],rm[k],N1)
+		r2[k,:] = LinRange(rm[k],xf[k],N2)
+	end
+	x[1,:] = hcat(r1[1,:],r2[1,:])
+	x[2,:] = hcat(r1[2,:],r2[2,:])
+	x[3,:] = hcat(r1[3,:],r2[3,:])
+	# initial control guess using straight line interpolation
+	u = init_straightline(bnds.path.u_min,bnds.path.u_min,N)
+	# initial time guess halfway between bounds
+	p = 0.5 * (bnds.trgt.t_min + bnds.trgt.t_max)
+	return x,u,p
+end
+
 function opt_cost(x,u,t,N::Integer)
 	J = 0.0;
 	id_F = 1:3

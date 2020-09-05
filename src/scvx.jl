@@ -17,22 +17,24 @@ function scvx_initialize(bnds::ScvxBnds,
 	nx = pars.nx
 	N = pars.N
 
-	# initial state guess using straight line interpolation
-	x0_min = bnds.init.x_min
-	x0_max = bnds.init.x_max
-	xf_min = bnds.trgt.x_min
-	xf_max = bnds.trgt.x_max
-	x0 = zeros(nx,1)
-	xf = zeros(nx,1)
-	for k = 1:nx
-		x0[k] = 0.5*(x0_min[k] + x0_max[k])
-	    xf[k] = 0.5*(xf_min[k] + xf_max[k])
-	end
-	x = init_straightline(x0,xf,N)
-	# initial control guess using straight line interpolation
-	u = init_straightline(bnds.path.u_min,bnds.path.u_min,N)
-	# initial time guess halfway between bounds
-	tf = 0.5 * (bnds.trgt.t_min + bnds.trgt.t_max)
+	# initial solution guess
+	x,u,tf = init_solution(bnds,N)
+	# x0_min = bnds.init.x_min
+	# x0_max = bnds.init.x_max
+	# xf_min = bnds.trgt.x_min
+	# xf_max = bnds.trgt.x_max
+	# x0 = zeros(nx,1)
+	# xf = zeros(nx,1)
+	# for k = 1:nx
+	# 	x0[k] = 0.5*(x0_min[k] + x0_max[k])
+	#     xf[k] = 0.5*(xf_min[k] + xf_max[k])
+	# end
+	# x = init_straightline(x0,xf,N)
+	# # x = init_solution(x0,xf,N)
+	# # initial control guess using straight line interpolation
+	# u = init_straightline(bnds.path.u_min,bnds.path.u_min,N)
+	# # initial time guess halfway between bounds
+	# tf = 0.5 * (bnds.trgt.t_min + bnds.trgt.t_max)
 	print(".")
 	# create initial solution struct
 	init_sol = ScvxSolution(x,u,tf,nx,pars.nu,N)
@@ -242,7 +244,11 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 		socp.constraints += dxk >= -tr
 		socp.constraints += duk <= tr
 		socp.constraints += duk >= -tr
-		socp.constraints += vbk >= 0.0
+		if prob.prv_sol.feas
+			socp.constraints += vbk == 0.0
+		else
+			socp.constraints += vbk >= 0.0
+		end
 		# socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
 
 		# add model specific convex path constraints

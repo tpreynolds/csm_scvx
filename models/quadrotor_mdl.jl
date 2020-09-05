@@ -55,6 +55,31 @@ function linearize(t::Float64,x,u,pars::T) where {T<:ModelParameters}
 	return A, B
 end
 
+function init_solution(bnds::ScvxBnds,N::Integer)
+
+	# initial state guess using straight line interpolation
+	x0_min = bnds.init.x_min
+	x0_max = bnds.init.x_max
+	xf_min = bnds.trgt.x_min
+	xf_max = bnds.trgt.x_max
+	x0 = zeros(6,1)
+	xf = zeros(6,1)
+	for k = 1:6
+		x0[k] = 0.5*(x0_min[k] + x0_max[k])
+	    xf[k] = 0.5*(xf_min[k] + xf_max[k])
+	end
+	# initial state guess using straight line interpolation
+	x = init_straightline(x0,xf,N)
+	# initial control guess using straight line interpolation
+	u = init_straightline(bnds.path.u_min,bnds.path.u_min,N)
+	g, = gravity([0.0;0.0;1.0]) # input here is arbitrary
+	u[:,1] = [-g; norm(g)]
+	u[:,N] = [-g; norm(g)]
+	# initial time guess halfway between bounds
+	p = 0.5 * (bnds.trgt.t_min + bnds.trgt.t_max)
+	return x,u,p
+end
+
 function opt_cost(x,u,t,N::Integer)
 	J = 0.0;
 	id_G = 4
@@ -84,11 +109,11 @@ function mdl_cvx_constraints!(socp,xk,uk,pars::T) where T<:ModelParameters
 	return nothing
 end
 
-function mdl_ncvx_constraints!(socp,xk,uk,xbk,ubk,pars::T) where T<:ModelParameters
+function mdl_ncvx_constraints!(socp,xk,uk,xbk,ubk,vbk,pars::T) where T<:ModelParameters
 	# loop through nonconvex constraints and add approximations
 	for i = 1:pars.obsN
 		_,A,b = obstacle_constraint(xbk,pars,i)
-		socp.constraints += dot(A,xk)+b <= 0.0
+		socp.constraints += dot(A,xk)+b - vbk <= 0.0
 	end
 
 	return nothing
