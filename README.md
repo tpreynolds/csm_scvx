@@ -1,6 +1,3 @@
 # csm_scvx_pdg
 
-Packages I've added:
-	Pkg.add("Convex")
-	Pkg.add("SCS")
-	Pkg.add("ECOS")
+This repository contains code associated with the CSM article on Lossless and Successive convexification. 
