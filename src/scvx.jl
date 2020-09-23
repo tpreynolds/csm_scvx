@@ -256,7 +256,7 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 	for k = 1:N
    		tempx = norm((xb.value)[:,k] - iSx*(x_ref[:,k]-cx),Inf);
    		tempu = norm((ub.value)[:,k] - iSu*(u_ref[:,k]-cu),Inf);
-   		varxu = maximum([varxu;tempx;tempu]);
+   		varxu = maximum([varxu;tempx]);
 	end
 
 	prob.new_sol.flag = Int(socp.status)

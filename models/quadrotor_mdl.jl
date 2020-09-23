@@ -86,7 +86,7 @@ function opt_cost(x,u,t,N::Integer)
 	for k = 1:N-1
 	    Gk  = u[id_G,k];
 	    Gkp = u[id_G,k+1];
-	    J += 0.5 * ( norm(Gk,2) + norm(Gkp,2) );
+	    J += 0.5 * ( Gk*Gk + Gkp*Gkp );
 	end
 	return 1e0*J
 end
