@@ -737,9 +737,14 @@ function csm_plot_freeflyer_alltrjs(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     circle = fmt.circle
     col1 = fmt.col.cyan
     col2 = fmt.col.magenta
-    cols = zeros(3,prob.solved)
+    if prob.solved > 0
+        Ncol = prob.solved
+    else
+        Ncol = prob.pars.iter_max
+    end
+    cols = zeros(3,Ncol)
     for i = 1:3
-        cols[i,:] = LinRange(col1[i],col2[i],prob.solved)
+        cols[i,:] = LinRange(col1[i],col2[i],Ncol)
     end
 
     # plot obstacles
@@ -773,14 +778,26 @@ function csm_plot_freeflyer_alltrjs(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
         end
     end
 
-    # plot discrete solutions
-    for iter = 1:prob.solved
-        ax.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label="Iteration $(iter)",
-                marker="o",color=cols[:,iter],linestyle="-",
+    # plot discrete solutions. If things converged, plot all of them. If things
+    # did not converge, plot only the first and last.
+    if prob.solved > 0
+        for iter = 1:prob.solved
+            ax.plot(x_all[1,:,iter],x_all[2,:,iter],
+                    label="Iteration $(iter)",
+                    marker="o",color=cols[:,iter],linestyle="-",
+                    markersize=fmt.markersize)
+        end
+    else
+        ax.plot(x_all[1,:,1],x_all[2,:,1],
+                label="First Iteration",
+                marker="o",color=cols[:,1],linestyle="-",
+                markersize=fmt.markersize)
+        x_last = prob.new_sol.state
+        ax.plot(x_last[1,:],x_last[2,:],
+                label="Last Iteration",
+                marker="o",color=cols[:,end],linestyle="-",
                 markersize=fmt.markersize)
     end
-
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(5,13)
     ax.set_ylim(-3,8)

@@ -19,6 +19,8 @@ struct FreeFlyerParameters<:ModelParameters
 	obsC::Array{Float64,2}
 	kozN::Integer
 	koz::Array{PolygonalObstacle,1}
+	# kizN::Integer
+	# kiz::Array{PolygonalObstacle,1}
 end
 
 function dynamics(t::Float64,x,u,t_grid,pars::T) where {T<:ModelParameters}
@@ -195,3 +197,21 @@ function koz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 
 	return f,A,b
 end
+
+# function kiz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
+# 	id_r = pars.id_r
+# 	rk 	 = xk[id_r]
+# 	obs  = pars.kiz[id]
+# 	# compute signed distance & closest point to r on obstacle
+# 	sd, close_pt = signed_distance(rk,obs)
+# 	# compute constraint value s.t. f(x) <= 0
+# 	f = sd+eps()
+# 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
+# 	A = zeros(13)
+# 	# if abs(sd)>eps()
+# 		A[id_r] = (rk-close_pt)/f
+# 	# end
+# 	b = f - dot(A,xk)
+#
+# 	return f,A,b
+# end

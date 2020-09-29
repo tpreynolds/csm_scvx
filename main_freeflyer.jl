@@ -26,7 +26,9 @@ obsc2 = [8.5;-0.15;5.0]
 obsiH = cat(obsiH1,obsiH2,obsiH3;dims=3) # obsiH2
 obsC  = cat(obsc1,obsc2,obsc3;dims=2) # obsc1
 kozN  = 24
-koz = ISS_koz(kozN);
+koz   = ISS_koz(kozN)
+# kizN  = 6
+# kiz   = ISS_kiz(kizN)
 
 pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,obsN,obsiH,obsC,kozN,koz)
 
@@ -64,9 +66,9 @@ wvc = 1e3
 ρ_2 = 0.9
 α   = 2.0
 β   = 2.0
-tr  = 0.5
+tr  = 1.0
 tr_lb = 0.001
-tr_ub = 5.
+tr_ub = 10.
 cvrg_tol = 1e-3
 feas_tol = 1e-2
 

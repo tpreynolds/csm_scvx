@@ -224,16 +224,16 @@ function solve_socp!(prob::ScvxProblem,scale::ScvxScale)::Float64
 		socp.constraints += uk >= prob.bnds.path.u_min
 
 		# trust region
-		socp.constraints += dxk <= tr
-		socp.constraints += dxk >= -tr
-		socp.constraints += duk <= tr
-		socp.constraints += duk >= -tr
+		# socp.constraints += dxk <= tr
+		# socp.constraints += dxk >= -tr
+		# socp.constraints += duk <= tr
+		# socp.constraints += duk >= -tr
 		if prob.prv_sol.feas
 			socp.constraints += vbk == 0.0
 		else
 			socp.constraints += vbk >= 0.0
 		end
-		# socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
+		socp.constraints += dot(dxk,dxk) + dot(duk,duk) <= tr
 
 		# add model specific convex path constraints
 		mdl_cvx_constraints!(socp,xk,uk,prob.pars.mdl_pars)
