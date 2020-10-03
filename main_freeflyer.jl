@@ -16,6 +16,7 @@ F_nrm_max = 72e-3
 M_nrm_max = 2e-3
 mass = 7.2
 inertia = diagm([0.1083,0.1083,0.1083])
+radius = sqrt(3) * (0.05/2)
 obsN = 3
 obsiH1 = diagm([1.0/0.3;1.0/0.3;1.0/0.3])
 obsiH2 = obsiH1
@@ -28,7 +29,7 @@ obsC  = cat(obsc1,obsc2,obsc3;dims=2) # obsc1
 kozN  = 24
 koz   = ISS_koz(kozN)
 
-pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,obsN,obsiH,obsC,kozN,koz)
+pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,radius,obsN,obsiH,obsC,kozN,koz)
 
 # initial conditions
 t0_min = 0.0
