@@ -145,7 +145,7 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     csm_plot_freeflyer_attituderate(ax5,prob,fmt,X)
 
     plt.show()
-    plt.savefig("figs/freeflyer_final_trj.png",bbox_inches="tight",dpi=300)
+    # plt.savefig("figs/freeflyer_final_trj.png",bbox_inches="tight",dpi=300)
 
     # create the second figure
     fig = plt.figure(figsize=fmt.figsize)
@@ -153,7 +153,7 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     csm_plot_freeflyer_alltrjs(ax,prob,fmt)
 
     plt.show()
-    plt.savefig("figs/freeflyer_all_trjs.png",bbox_inches="tight",dpi=300)
+    # plt.savefig("figs/freeflyer_all_trjs.png",bbox_inches="tight",dpi=300)
 
     # csm_freeflyer_sd(prob,fmt,X)
     return nothing

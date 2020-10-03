@@ -27,8 +27,6 @@ obsiH = cat(obsiH1,obsiH2,obsiH3;dims=3) # obsiH2
 obsC  = cat(obsc1,obsc2,obsc3;dims=2) # obsc1
 kozN  = 24
 koz   = ISS_koz(kozN)
-# kizN  = 6
-# kiz   = ISS_kiz(kizN)
 
 pars = FreeFlyerParameters(id_r,id_v,id_q,id_w,id_F,id_M,F_nrm_max,M_nrm_max,r_nrm_max,v_nrm_max,w_nrm_max,mass,inertia,obsN,obsiH,obsC,kozN,koz)
 
