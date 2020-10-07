@@ -14,6 +14,7 @@ struct FreeFlyerParameters<:ModelParameters
 	w_nrm_max::Float64
 	mass::Float64
 	inertia::Array{Float64,2}
+	radius::Float64
 	obsN::Integer
 	obsiH::Array{Float64,3}
 	obsC::Array{Float64,2}
@@ -95,7 +96,7 @@ function init_solution(bnds::ScvxBnds,N::Integer)
 	N2 = N - N1
 	r1 = zeros(3,N1)
 	r2 = zeros(3,N2)
-	rm = [ xf[1]; x0[2]; 0.5*(x0[3]+xf[3]) ]
+	rm = [ 10.5; 1.0; 0.5*(x0[3]+xf[3]) ]
 	for k = 1:3
 		r1[k,:] = LinRange(x0[k],rm[k],N1)
 		r2[k,:] = LinRange(rm[k],xf[k],N2)
@@ -121,6 +122,7 @@ function opt_cost(x,u,t,N::Integer)
 		Mkp = u[id_M,k+1]
 	    J += 0.5 * ( dot(Fk,Fk) + dot(Fkp,Fkp) + dot(Mk,Mk) + dot(Mkp,Mkp) )
 	end
+	# the constant multiplier below is for scaling purposes
 	return 1e1*J
 end
 
@@ -169,7 +171,7 @@ function obstacle_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 	temp = iH*(rk-c)
 
 	# compute constraint value s.t. f(x)<=0
-	f = 1 - norm(temp)
+	f = 1 + pars.radius - norm(temp)
 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
 	A = zeros(13)
 	if norm(temp)>eps()
@@ -187,7 +189,7 @@ function koz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 	# compute signed distance & closest point to r on obstacle
 	sd, close_pt = signed_distance(rk,obs)
 	# compute constraint value s.t. f(x) <= 0
-	f = -sd+eps()
+	f = -sd+pars.radius
 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
 	A = zeros(13)
 	# if abs(sd)>eps()
@@ -197,21 +199,3 @@ function koz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 
 	return f,A,b
 end
-
-# function kiz_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
-# 	id_r = pars.id_r
-# 	rk 	 = xk[id_r]
-# 	obs  = pars.kiz[id]
-# 	# compute signed distance & closest point to r on obstacle
-# 	sd, close_pt = signed_distance(rk,obs)
-# 	# compute constraint value s.t. f(x) <= 0
-# 	f = sd+eps()
-# 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
-# 	A = zeros(13)
-# 	# if abs(sd)>eps()
-# 		A[id_r] = (rk-close_pt)/f
-# 	# end
-# 	b = f - dot(A,xk)
-#
-# 	return f,A,b
-# end

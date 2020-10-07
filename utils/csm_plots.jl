@@ -54,9 +54,9 @@ function CSMPlotFmt()
     figsize     = (8,6)
     dblwide     = (12,6)
     linewidth   = 2
-    labelsize   = 12
-    fontsize    = 14
-    titlesize   = 16
+    labelsize   = 16
+    fontsize    = 16
+    titlesize   = 18
     return CSMPlotFmt(col,circle,markersize,gridalpha,
                         figsize,dblwide,linewidth,
                         labelsize,fontsize,titlesize)
@@ -69,6 +69,7 @@ function plt_rectangle(ax, center, widths;
     Plots a rectangle with a given center and total widths
     arguments:  - center    - (2,) center
                 - widths    - (2,) total widths from and to edges of rectangle
+    Provided by: T. Lew | Stanford | 2020
     """
     deltas = [widths[1], widths[2]]
     bottom_left = (center[1] - deltas[1]/2.0, center[2] - deltas[2]/2.0)
@@ -94,6 +95,11 @@ function csm_plots_quad(prob::ScvxProblem)
 
     fmt = CSMPlotFmt()
 
+    plt.rc("text", usetex=true)
+    rcParams = PyPlot.PyDict(PyPlot.matplotlib."rcParams")
+    rcParams["text.usetex"] = true;
+    rcParams["mathtext.fontset"]  = "cm";
+
     # create first figure
     fig = plt.figure(figsize=fmt.figsize)
     grd = gsp.GridSpec(2, 2, wspace=0.25, hspace=0.5)
@@ -106,7 +112,7 @@ function csm_plots_quad(prob::ScvxProblem)
     csm_plot_quad_accel(ax3,prob,fmt)
 
     plt.show()
-    plt.savefig("figs/quad_final_trj.png",bbox_inches="tight",dpi=300)
+    plt.savefig("figs/quad_final_trj.png",bbox_inches="tight",dpi=350)
 
     # create second figure
     fig = plt.figure(figsize=fmt.figsize)
@@ -114,7 +120,7 @@ function csm_plots_quad(prob::ScvxProblem)
     csm_plot_quad_alltrjs(ax,prob,fmt)
 
     plt.show()
-    plt.savefig("figs/quad_all_trjs.png",bbox_inches="tight",dpi=300)
+    plt.savefig("figs/quad_all_trjs.png",bbox_inches="tight",dpi=350)
     return nothing
 end
 
@@ -137,6 +143,11 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     ax3 = plt.subplot(get(grd,(0,3)))
     ax4 = plt.subplot(get(grd,(1,2)))
     ax5 = plt.subplot(get(grd,(1,3)))
+
+    plt.rc("text", usetex=true)
+    rcParams = PyPlot.PyDict(PyPlot.matplotlib."rcParams")
+    rcParams["text.usetex"] = true;
+    rcParams["mathtext.fontset"]  = "cm";
 
     csm_plot_freeflyer_trj(ax1,prob,fmt,X)
     csm_plot_freeflyer_thrust(ax2,prob,fmt)
@@ -194,7 +205,7 @@ function csm_plot_quad_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
         if i==1
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
-                    linewidth=1,linestyle="-",label="Obstacle")
+                    linewidth=1,linestyle="-",label=L"\mathrm{Obstacle}")
             else
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
@@ -210,11 +221,11 @@ function csm_plot_quad_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
 
     # plot discrete solution
     ax.plot(X[1,:],X[2,:],
-            label="Integrated Trajectory",
+            label=L"\mathrm{Integrated\ Trajectory}",
             color=fmt.col.blue,linestyle="-",
             linewidth=fmt.lw)
     ax.plot(x[1,:],x[2,:],
-            label="SCvx solution",
+            label=L"\mathrm{SCvx\ solution}",
             marker="o",color=fmt.col.blue,linestyle="",
             markersize=fmt.markersize)
     # axins1.plot(X[1,:],X[2,:],
@@ -246,7 +257,7 @@ function csm_plot_quad_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
     end
     horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
                                                     color=fmt.col.green,
-                                                    label="Thrust Direction",
+                                                    label=L"\mathrm{Thrust\ Direction}",
                                                     linewidth=fmt.lw)
     ax.add_collection(horz_thrust_vecs)
     # axins1.add_collection(horz_thrust_vecs)
@@ -257,14 +268,15 @@ function csm_plot_quad_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
     # ax.indicate_inset_zoom(axins1)
     # ax.indicate_inset_zoom(axins2)
 
+    plt.rc("text", usetex=true)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(-0.5,3)
     ax.set_ylim(-0.5,6.5)
-    ax.set_xlabel(L"E\ [m]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"N\ [m]",fontsize=fmt.fontsize)
+    ax.set_xlabel(L"\mathrm{E\ [m]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"\mathrm{N\ [m]}",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
-    ax.legend(fontsize=10,loc="lower right")
-    ax.set_title("Final Quadcopter Trajectory",fontsize=fmt.titlesize)
+    ax.legend(fontsize=12,loc="lower right")
+    ax.set_title(L"\mathrm{Final\ Quadcopter\ Trajectory}",fontsize=fmt.titlesize)
 
     return nothing
 end
@@ -308,9 +320,9 @@ function csm_plot_quad_tilt(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
     ax.set_xlim(0,tf)
     ax.set_ylim(0,70)
     ax.grid(alpha=fmt.gridalpha)
-    ax.set_title("Tilt Angle",fontsize=fmt.titlesize)
-    ax.set_xlabel("Time [s]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"$\theta$ [deg]",fontsize=fmt.fontsize)
+    ax.set_title(L"\mathrm{Tilt\ Angle}",fontsize=fmt.titlesize)
+    ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"$\theta\ \mathrm{[deg]}$",fontsize=fmt.fontsize)
 
     return nothing
 end
@@ -349,9 +361,9 @@ function csm_plot_quad_accel(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     ax.set_xticks([tks;tf])
     ax.set_ylim(0,25)
     ax.grid(alpha=fmt.gridalpha)
-    ax.set_title("Cmd. Acceleration",fontsize=fmt.titlesize)
-    ax.set_xlabel("Time [s]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"$\|\|u\|\|_2~\mathrm{[m/s^2]}$",fontsize=fmt.fontsize)
+    ax.set_title(L"\mathrm{Cmd.\ Acceleration}",fontsize=fmt.titlesize)
+    ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"$\|u\|_2~\mathrm{[m/s^2]}$",fontsize=fmt.fontsize)
 
     return nothing
 end
@@ -409,27 +421,28 @@ function csm_plot_quad_alltrjs(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     # plot discrete solutions
     for iter = 1:prob.solved
         ax.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label="Iteration $(iter)",
+                label=string(L"\mathrm{Iteration}\ ",iter),
                 marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
         axins1.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label="Iteration $(iter)",
+                label=string(L"\mathrm{Iteration}\ ",iter),
                 marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
         axins2.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label="Iteration $(iter)",
+                label=string(L"\mathrm{Iteration}\ ",iter),
                 marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
     end
 
+    plt.rc("text", usetex=true)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(-0.5,3)
     ax.set_ylim(-0.5,6.5)
     ax.grid(alpha=fmt.gridalpha)
-    ax.set_title("All Quadcopter Trajectories",fontsize=fmt.titlesize)
-    ax.set_xlabel("E [m]",fontsize=fmt.fontsize)
-    ax.set_ylabel("N [m]",fontsize=fmt.fontsize)
-    ax.legend(fontsize=fmt.fontsize)
+    ax.set_title(L"\mathrm{All\ Quadcopter\ Trajectories}",fontsize=fmt.titlesize)
+    ax.set_xlabel(L"\mathrm{E\ [m]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"\mathrm{N\ [m]}",fontsize=fmt.fontsize)
+    ax.legend(fontsize=14,loc="upper left")
 end
 
 function csm_plot_freeflyer_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
@@ -451,7 +464,7 @@ function csm_plot_freeflyer_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
         if i==1
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
-                    linewidth=1,linestyle="-",label="Obstacle")
+                    linewidth=1,linestyle="-",label=L"\mathrm{Obstacle}")
             else
             ax.fill_between(obs[1,:],obs[2,:],
                     color=fmt.col.red,alpha=0.1,
@@ -472,11 +485,11 @@ function csm_plot_freeflyer_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
 
     # plot discrete solution
     ax.plot(X[1,:],X[2,:],
-            label=L"Integrated\ Trajectory",
+            label=L"\mathrm{Integrated\ Trajectory}",
             color=fmt.col.blue,linestyle="-",
             linewidth=fmt.lw)
     ax.plot(x[1,:],x[2,:],
-            label=L"SCvx\ solution",
+            label=L"\mathrm{SCvx\ solution}",
             marker="o",color=fmt.col.blue,linestyle="",
             markersize=fmt.markersize)
 
@@ -493,17 +506,18 @@ function csm_plot_freeflyer_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
     end
     horz_thrust_vecs = plt.matplotlib.collections.LineCollection(lines,
                                                     color=fmt.col.green,
-                                                    label=L"Thrust\ Direction",
+                                                    label=L"\mathrm{Thrust\ Direction}",
                                                     linewidth=fmt.lw)
+    plt.rc("text", usetex=true)
     ax.add_collection(horz_thrust_vecs)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(5,13)
     ax.set_ylim(-3,8)
-    ax.set_xlabel(L"x_{\mathcal{I}}\ [m]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"y_{\mathcal{I}}\ [m]",fontsize=fmt.fontsize)
+    ax.set_xlabel(L"x_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"y_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
-    ax.legend(fontsize=12,loc="upper left")
-    ax.set_title(L"Final\ FreeFlyer\ Trajectory",fontsize=fmt.titlesize)
+    ax.legend(fontsize=14,loc="upper left",labelspacing=0.25)
+    ax.set_title(L"\mathrm{Final\ FreeFlyer\ Trajectory}",fontsize=fmt.titlesize)
 
     return nothing
 end
@@ -547,8 +561,10 @@ function csm_plot_freeflyer_thrust(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(0,tf)
     ax.set_ylim(ylmin,ylmax)
-    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"Thrust\ [mN]",fontsize=fmt.fontsize)
+    ax.set_xticks([0,50,100])
+    ax.set_yticks([-25,0,25,50,75])
+    ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"\mathrm{Thrust\ [mN]}",fontsize=fmt.fontsize)
     # ax.legend(fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
     # ax.legend(fontsize=fmt.fontsize)
@@ -597,10 +613,12 @@ function csm_plot_freeflyer_torque(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(0,tf)
     ax.set_ylim(ylmin,ylmax)
-    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"Torque\ [mNm]",fontsize=fmt.fontsize)
+    ax.set_xticks([0,50,100])
+    ax.set_yticks([0.0,0.5,1.0,1.5,2.0])
+    ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"\mathrm{Torque\ [mNm]}",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10,loc="upper right")
     # ax.set_title(L"Final\ FreeFlyer\ Controls",fontsize=fmt.titlesize)
 
     return nothing
@@ -628,7 +646,7 @@ function csm_plot_freeflyer_attitude(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             marker="o",
             markersize=fmt.markersize)
     ax.plot(Ti,rpy_c[1,:],
-            label=L"roll",
+            label=L"\mathrm{roll}",
             color=fmt.col.red,
             linestyle="-",
             linewidth=fmt.lw)
@@ -638,7 +656,7 @@ function csm_plot_freeflyer_attitude(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             marker="o",
             markersize=fmt.markersize)
     ax.plot(Ti,rpy_c[2,:],
-            label=L"pitch",
+            label=L"\mathrm{pitch}",
             color=fmt.col.green,
             linestyle="-",
             linewidth=fmt.lw)
@@ -648,16 +666,17 @@ function csm_plot_freeflyer_attitude(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             marker="o",
             markersize=fmt.markersize)
     ax.plot(Ti,rpy_c[3,:],
-            label=L"yaw",
+            label=L"\mathrm{yaw}",
             color=fmt.col.blue,
             linestyle="-",
             linewidth=fmt.lw)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(0,tf)
     ax.set_ylim(-180,180)
+    ax.set_xticks([0,50,100])
     ax.set_yticks([-180,-90,0,90,180])
-    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"Attitude\ [deg]",fontsize=fmt.fontsize)
+    ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"\mathrm{Attitude\ [deg]}",fontsize=fmt.fontsize,va="baseline")
     ax.grid(alpha=fmt.gridalpha)
     ax.legend(fontsize=8,loc="upper right")
     # ax.set_title(L"Attitude",fontsize=fmt.titlesize)
@@ -687,7 +706,7 @@ function csm_plot_freeflyer_attituderate(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             markersize=fmt.markersize,
             linewidth=fmt.lw)
     ax.plot(Ti,wB_c[1,:],
-            label=L"ω_x",
+            label=L"\omega_x",
             color=fmt.col.red,
             linestyle="-",
             linewidth=fmt.lw)
@@ -698,7 +717,7 @@ function csm_plot_freeflyer_attituderate(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             markersize=fmt.markersize,
             linewidth=fmt.lw)
     ax.plot(Ti,wB_c[2,:],
-            label=L"ω_y",
+            label=L"\omega_y",
             color=fmt.col.green,
             linestyle="-",
             linewidth=fmt.lw)
@@ -709,24 +728,26 @@ function csm_plot_freeflyer_attituderate(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             markersize=fmt.markersize,
             linewidth=fmt.lw)
     ax.plot(Ti,wB_c[3,:],
-            label=L"ω_z",
+            label=L"\omega_z",
             color=fmt.col.blue,
             linestyle="-",
             linewidth=fmt.lw)
-    ax.plot([0;tf],[w_nrm_max;w_nrm_max],label=L"||ω||_{∞,max}",
+    ax.plot([0;tf],[w_nrm_max;w_nrm_max],label=L"\|\omega\|_{\infty,max}",
             color=[1;0;0],linestyle="--",
             linewidth=fmt.lw)
     ylmin, ylmax = ax.get_ylim()
     ax.fill_between([0;tf],[w_nrm_max;w_nrm_max],[ylmax;ylmax],
                     facecolor=fmt.col.red,alpha=0.1)
 
+    plt.rc("text", usetex=true)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(0,tf)
     ax.set_ylim(ylmin,ylmax)
-    ax.set_xlabel(L"Time\ [s]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"Angular\ Rate\ [deg/s]",fontsize=fmt.fontsize)
+    ax.set_xticks([0,50,100])
+    ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"\mathrm{Angular\ Rate\ [deg/s]}",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10,loc="upper right")
     # ax.set_title(L"Attitude Rate",fontsize=fmt.titlesize)
 
     return nothing
@@ -783,29 +804,30 @@ function csm_plot_freeflyer_alltrjs(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     if prob.solved > 0
         for iter = 1:prob.solved
             ax.plot(x_all[1,:,iter],x_all[2,:,iter],
-                    label="Iteration $(iter)",
+                    label=string(L"\mathrm{Iteration\ }",iter),#"Iteration $(iter)",
                     marker="o",color=cols[:,iter],linestyle="-",
                     markersize=fmt.markersize)
         end
     else
         ax.plot(x_all[1,:,1],x_all[2,:,1],
-                label="First Iteration",
+                label=L"\mathrm{First\ Iteration}",
                 marker="o",color=cols[:,1],linestyle="-",
                 markersize=fmt.markersize)
         x_last = prob.new_sol.state
         ax.plot(x_last[1,:],x_last[2,:],
-                label="Last Iteration",
+                label=L"\mathrm{Last\ Iteration}",
                 marker="o",color=cols[:,end],linestyle="-",
                 markersize=fmt.markersize)
     end
+    plt.rc("text", usetex=true)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
     ax.set_xlim(5,13)
     ax.set_ylim(-3,8)
-    ax.set_xlabel(L"x_{\mathcal{I}}\ [m]",fontsize=fmt.fontsize)
-    ax.set_ylabel(L"y_{\mathcal{I}}\ [m]",fontsize=fmt.fontsize)
-    ax.legend(fontsize=12,loc="upper left")
+    ax.set_xlabel(L"x_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize)
+    ax.set_ylabel(L"y_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize)
+    ax.legend(fontsize=fmt.labelsize,loc="upper left",labelspacing=0.25)
     ax.grid(alpha=fmt.gridalpha)
-    ax.set_title(L"All\ FreeFlyer\ Trajectories",fontsize=fmt.titlesize)
+    ax.set_title(L"\mathrm{All\ FreeFlyer\ Trajectories}",fontsize=fmt.titlesize)
 
     return nothing
 end
@@ -864,8 +886,8 @@ function csm_freeflyer_sd(prob::ScvxProblem,fmt::CSMPlotFmt,X)
     plt.xlim(0,tf)
     # plt.ylim(0,70)
     plt.grid(alpha=fmt.gridalpha)
-    plt.title("Signed Distance",fontsize=fmt.titlesize)
-    plt.xlabel("Time [s]",fontsize=fmt.fontsize)
+    plt.title(L"\mathrm{Signed\ Distance}",fontsize=fmt.titlesize)
+    plt.xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
     plt.ylabel(L"\min_i\;d_i(r)",fontsize=fmt.fontsize)
     plt.tight_layout()
     plt.show()
