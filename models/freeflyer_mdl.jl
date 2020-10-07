@@ -171,7 +171,7 @@ function obstacle_constraint(xk,pars::T,id::Integer) where T<:ModelParameters
 	temp = iH*(rk-c)
 
 	# compute constraint value s.t. f(x)<=0
-	f = 1 - norm(temp)
+	f = 1 + pars.radius - norm(temp)
 	# compute constraint derivative s.t. f(x)<=0 approx A*x+b<=0
 	A = zeros(13)
 	if norm(temp)>eps()
