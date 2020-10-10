@@ -25,16 +25,16 @@ t0_min = 0.0
 t0_max = 0.0
 x0_min = [ 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ]
 x0_max = [ 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ]
-u0_min = [ 0.0; 0.0; 9.81; NaN ]
-u0_max = [ 0.0; 0.0; 9.81; NaN ]
+u0_min = [ NaN; NaN; NaN; NaN] #[ 0.0; 0.0; 9.81; NaN ]
+u0_max = [ NaN; NaN; NaN; NaN] #[ 0.0; 0.0; 9.81; NaN ]
 
 # final conditions
 tf_min = 2.5
 tf_max = 2.5
 xf_min = [ 2.5; 6.0; 0.0; 0.0; 0.0; 0.0 ]
 xf_max = [ 2.5; 6.0; 0.0; 0.0; 0.0; 0.0 ]
-uf_min = [ 0.0; 0.0; 9.81; NaN ]
-uf_max = [ 0.0; 0.0; 9.81; NaN ]
+uf_min = [ NaN; NaN; NaN; NaN] #[ 0.0; 0.0; 9.81; NaN ]
+uf_max = [ NaN; NaN; NaN; NaN] #[ 0.0; 0.0; 9.81; NaN ]
 
 # linear path constraints
 x_min = [ -10.0; -10.0; -10.0; -8.0; -8.0; -8.0 ]

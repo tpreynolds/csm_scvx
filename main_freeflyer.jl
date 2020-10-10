@@ -68,7 +68,7 @@ wvc = 1e3
 tr  = 1.0
 tr_lb = 0.001
 tr_ub = 10.
-cvrg_tol = 1e-3
+cvrg_tol = 3e-2
 feas_tol = 1e-2
 
 init = ScvxInitBnds(t0_min,t0_max,x0_min,x0_max,u0_min,u0_max)
