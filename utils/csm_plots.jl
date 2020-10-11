@@ -156,7 +156,7 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     csm_plot_freeflyer_attituderate(ax5,prob,fmt,X)
 
     plt.show()
-    plt.savefig("figs/freeflyer_final_trj.png",bbox_inches="tight",dpi=300)
+    # plt.savefig("figs/freeflyer_final_trj.png",bbox_inches="tight",dpi=300)
 
     # create the second figure
     fig = plt.figure(figsize=fmt.figsize)
@@ -166,6 +166,14 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     plt.show()
     plt.savefig("figs/freeflyer_all_trjs.png",bbox_inches="tight",dpi=300)
 
+    # create the 3d figure
+    plt.using3D()
+    fig = plt.figure()
+    ax = plt.subplot(111,projection="3d")
+    csm_plot_freeflyer_3d(ax,prob,fmt,X)
+
+    plt.show()
+    plt.savefig("figs/freeflyer_closeup.png",bbox_inches="tight",dpi=300)
     # csm_freeflyer_sd(prob,fmt,X)
     return nothing
 end
@@ -270,8 +278,8 @@ function csm_plot_quad_trj(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
 
     plt.rc("text", usetex=true)
     ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
-    ax.set_xlim(-0.5,3)
-    ax.set_ylim(-0.5,6.5)
+    ax.set_xlim(-0.25,3)
+    ax.set_ylim(-0.25,6.25)
     ax.set_xlabel(L"\mathrm{E\ [m]}",fontsize=fmt.fontsize)
     ax.set_ylabel(L"\mathrm{N\ [m]}",fontsize=fmt.fontsize)
     ax.grid(alpha=fmt.gridalpha)
@@ -318,7 +326,7 @@ function csm_plot_quad_tilt(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
     tks = LinRange(0.,floor(tf),Integer(floor(tf)+1))
     ax.set_xticks([tks;tf])
     ax.set_xlim(0,tf)
-    ax.set_ylim(0,70)
+    ax.set_ylim(0,65)
     ax.grid(alpha=fmt.gridalpha)
     ax.set_title(L"\mathrm{Tilt\ Angle}",fontsize=fmt.titlesize)
     ax.set_xlabel(L"\mathrm{Time\ [s]}",fontsize=fmt.fontsize)
@@ -421,15 +429,15 @@ function csm_plot_quad_alltrjs(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     # plot discrete solutions
     for iter = 1:prob.solved
         ax.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label=string(L"\mathrm{Iteration}\ ",iter),
+                label=string(L"\mathrm{Iteration}\ ",string(iter)),
                 marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
         axins1.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label=string(L"\mathrm{Iteration}\ ",iter),
+                label=string(L"\mathrm{Iteration}\ ",string(iter)),
                 marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
         axins2.plot(x_all[1,:,iter],x_all[2,:,iter],
-                label=string(L"\mathrm{Iteration}\ ",iter),
+                label=string(L"\mathrm{Iteration}\ ",string(iter)),
                 marker="o",color=cols[:,iter],linestyle="-",
                 markersize=fmt.markersize)
     end
@@ -830,6 +838,138 @@ function csm_plot_freeflyer_alltrjs(ax,prob::ScvxProblem,fmt::CSMPlotFmt)
     ax.set_title(L"\mathrm{All\ FreeFlyer\ Trajectories}",fontsize=fmt.titlesize)
 
     return nothing
+end
+
+function csm_plot_freeflyer_3d(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
+    x   = prob.new_sol.state
+    circle = fmt.circle
+
+    xlim = (10.5,12)
+    ylim = (3,4.5)
+    zlim = (3.75,5.25)
+
+    pos = zeros(3,0)
+    POS = zeros(3,0)
+    for k = 1:size(X,2)
+        if X[1,k] >= xlim[1] && X[1,k] <= xlim[2]
+            if X[2,k] >= ylim[1] && X[2,k] <= ylim[2]
+                POS = hcat(POS,X[1:3,k])
+            end
+        end
+    end
+    for k = 1:size(x,2)
+        if x[1,k] >= xlim[1] && x[1,k] <= xlim[2]
+            if x[2,k] >= ylim[1] && x[2,k] <= ylim[2]
+                pos = hcat(pos,x[1:3,k])
+            end
+        end
+    end
+
+    # plot obstacle
+    for i = 1
+        H = I(3)/pars.obsiH[:,:,i]
+        c = pars.obsC[:,i]
+
+        # create ellipsoid data for plotting
+        n = 100
+        u = LinRange(0.0, 2.0 * pi, n)
+        v = LinRange(0.0, pi, n)
+        obsx = c[1] * ones(n,n)
+        obsy = c[2] * ones(n,n)
+        obsz = c[3] * ones(n,n)
+        obsx += H[1,1] * cos.(u) * sin.(v)';
+        obsy += H[2,2] * sin.(u) * sin.(v)';
+        obsz += H[3,3] * ones(n) * cos.(v)';
+        ax.plot_surface(obsx,obsy,obsz,color=fmt.col.red,alpha=0.5,
+                       linewidth=1,linestyle="-",shade=false)
+    end
+
+    # plot discrete solution
+    ax.plot3D(POS[1,:],POS[2,:],POS[3,:],
+            label=L"\mathrm{Integrated\ Trajectory}",
+            color=fmt.col.blue,linestyle="-",
+            linewidth=fmt.lw)
+    ax.plot3D(pos[1,:],pos[2,:],pos[3,:],
+            label=L"\mathrm{SCvx\ solution}",
+            marker="o",color=fmt.col.blue,linestyle="",
+            markersize=fmt.markersize)
+
+    # add projections
+    prj_alpha = 0.3
+        for i = 1
+            H_XY = I(2)/pars.obsiH[1:2,1:2,i]
+            H_YZ = I(2)/pars.obsiH[2:3,2:3,i]
+            iH_XZ = [ pars.obsiH[1,1,i] pars.obsiH[1,3,i];
+                      pars.obsiH[3,1,i] pars.obsiH[3,3,i] ];
+            H_XZ = I(2)/iH_XZ
+            c_XY = pars.obsC[1:2,i]
+            c_YZ = pars.obsC[2:3,i]
+            c_XZ = [ pars.obsC[1,i]; pars.obsC[3,i] ]
+            obs_XY = H_XY * circle .+ c_XY
+            obs_YZ = H_YZ * circle .+ c_YZ
+            obs_XZ = H_XZ * circle .+ c_XZ
+            prj_X  = xlim[2] .* ones(size(circle[1,:]))
+            prj_Y  = ylim[2] .* ones(size(circle[1,:]))
+            prj_Z  = zlim[1] .* ones(size(circle[1,:]))
+            ax.plot3D(prj_X,obs_YZ[1,:],obs_YZ[2,:],
+                    color=fmt.col.red,alpha=prj_alpha,
+                    linewidth=1,linestyle="-")
+            ax.plot3D(obs_XY[1,:],obs_XY[2,:],prj_Z,
+                    color=fmt.col.red,alpha=prj_alpha,
+                    linewidth=1,linestyle="-")
+            ax.plot3D(obs_XZ[1,:],prj_Y,obs_XZ[2,:],
+                    color=fmt.col.red,alpha=prj_alpha,
+                    linewidth=1,linestyle="-")
+        end
+        prj_X  = xlim[2] .* ones(size(POS[1,:]))
+        prj_Y  = ylim[2] .* ones(size(POS[2,:]))
+        prj_Z  = zlim[1] .* ones(size(POS[3,:]))
+        ax.plot3D(prj_X,POS[2,:],POS[3,:],
+                color=fmt.col.blue,linestyle="-",
+                linewidth=fmt.lw,alpha=prj_alpha)
+        ax.plot3D(POS[1,:],prj_Y,POS[3,:],
+                color=fmt.col.blue,linestyle="-",
+                linewidth=fmt.lw,alpha=prj_alpha)
+        ax.plot3D(POS[1,:],POS[2,:],prj_Z,
+                color=fmt.col.blue,linestyle="-",
+                linewidth=fmt.lw,alpha=prj_alpha)
+        prj_X  = xlim[2] .* ones(size(pos[1,:]))
+        prj_Y  = ylim[2] .* ones(size(pos[2,:]))
+        prj_Z  = zlim[1] .* ones(size(pos[3,:]))
+        ax.plot3D(prj_X,pos[2,:],pos[3,:],
+                marker="o",color=fmt.col.blue,linestyle="",
+                markersize=fmt.markersize,mew=0,
+                alpha=prj_alpha)
+        ax.plot3D(pos[1,:],prj_Y,pos[3,:],
+                marker="o",color=fmt.col.blue,linestyle="",
+                markersize=fmt.markersize,mew=0,
+                alpha=prj_alpha)
+        ax.plot3D(pos[1,:],pos[2,:],prj_Z,
+                marker="o",color=fmt.col.blue,linestyle="",
+                markersize=fmt.markersize,mew=0,
+                alpha=prj_alpha)
+
+    plt.rc("text", usetex=true)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    ax.set_zlim(zlim)
+    ax.set_xticks(LinRange(xlim[1],xlim[2],4))
+    ax.set_yticks(LinRange(ylim[1],ylim[2],4))
+    ax.set_zticks(LinRange(zlim[1],zlim[2],4))
+    ax.view_init(20,-135)
+    ax.set_xlabel(L"x_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize,
+        va="baseline")
+    ax.set_ylabel(L"y_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize,
+        va="baseline")
+    ax.zaxis.set_rotate_label(false)
+    ax.set_zlabel(L"z_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize,
+        rotation=90,va="baseline")
+    ax.grid(alpha=fmt.gridalpha)
+    ax.w_xaxis.pane.fill = false
+    ax.w_yaxis.pane.fill = false
+    ax.w_zaxis.pane.fill = false
+    # ax.set_title(L"\mathrm{Final\ FreeFlyer\ Trajectory\ (Closeup)}",fontsize=fmt.titlesize)
 end
 
 function csm_freeflyer_sd(prob::ScvxProblem,fmt::CSMPlotFmt,X)
