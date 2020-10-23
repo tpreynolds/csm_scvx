@@ -40,6 +40,7 @@ struct CSMPlotFmt
     lw::Integer
     labelsize::Integer
     fontsize::Integer
+    fontsizesmall::Integer
     titlesize::Integer
 end
 function CSMPlotFmt()
@@ -56,10 +57,11 @@ function CSMPlotFmt()
     linewidth   = 2
     labelsize   = 16
     fontsize    = 16
+    fontsizesmall = 14
     titlesize   = 18
     return CSMPlotFmt(col,circle,markersize,gridalpha,
                         figsize,dblwide,linewidth,
-                        labelsize,fontsize,titlesize)
+                        labelsize,fontsize,fontsizesmall,titlesize)
 end
 
 function plt_rectangle(ax, center, widths;
@@ -173,7 +175,7 @@ function csm_plots_freeflyer(prob::ScvxProblem)
     csm_plot_freeflyer_3d(ax,prob,fmt,X)
 
     plt.show()
-    plt.savefig("figs/freeflyer_closeup.png",bbox_inches="tight",dpi=300)
+    plt.savefig("figs/freeflyer_closeup.png",dpi=300)
     # csm_freeflyer_sd(prob,fmt,X)
     return nothing
 end
@@ -908,7 +910,7 @@ function csm_plot_freeflyer_3d(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
             obs_XY = H_XY * circle .+ c_XY
             obs_YZ = H_YZ * circle .+ c_YZ
             obs_XZ = H_XZ * circle .+ c_XZ
-            prj_X  = xlim[2] .* ones(size(circle[1,:]))
+            prj_X  = xlim[1] .* ones(size(circle[1,:]))
             prj_Y  = ylim[2] .* ones(size(circle[1,:]))
             prj_Z  = zlim[1] .* ones(size(circle[1,:]))
             ax.plot3D(prj_X,obs_YZ[1,:],obs_YZ[2,:],
@@ -921,7 +923,7 @@ function csm_plot_freeflyer_3d(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
                     color=fmt.col.red,alpha=prj_alpha,
                     linewidth=1,linestyle="-")
         end
-        prj_X  = xlim[2] .* ones(size(POS[1,:]))
+        prj_X  = xlim[1] .* ones(size(POS[1,:]))
         prj_Y  = ylim[2] .* ones(size(POS[2,:]))
         prj_Z  = zlim[1] .* ones(size(POS[3,:]))
         ax.plot3D(prj_X,POS[2,:],POS[3,:],
@@ -933,7 +935,7 @@ function csm_plot_freeflyer_3d(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
         ax.plot3D(POS[1,:],POS[2,:],prj_Z,
                 color=fmt.col.blue,linestyle="-",
                 linewidth=fmt.lw,alpha=prj_alpha)
-        prj_X  = xlim[2] .* ones(size(pos[1,:]))
+        prj_X  = xlim[1] .* ones(size(pos[1,:]))
         prj_Y  = ylim[2] .* ones(size(pos[2,:]))
         prj_Z  = zlim[1] .* ones(size(pos[3,:]))
         ax.plot3D(prj_X,pos[2,:],pos[3,:],
@@ -950,20 +952,20 @@ function csm_plot_freeflyer_3d(ax,prob::ScvxProblem,fmt::CSMPlotFmt,X)
                 alpha=prj_alpha)
 
     plt.rc("text", usetex=true)
-    ax.tick_params(axis="both", which="major", labelsize=fmt.labelsize)
+    ax.tick_params(axis="both", which="major", labelsize=fmt.fontsizesmall)
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     ax.set_zlim(zlim)
     ax.set_xticks(LinRange(xlim[1],xlim[2],4))
     ax.set_yticks(LinRange(ylim[1],ylim[2],4))
     ax.set_zticks(LinRange(zlim[1],zlim[2],4))
-    ax.view_init(20,-135)
-    ax.set_xlabel(L"x_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize,
+    ax.view_init(20,-45)
+    ax.set_xlabel(L"x_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsizesmall,
         va="baseline")
-    ax.set_ylabel(L"y_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize,
-        va="baseline")
+    ax.set_ylabel(L"y_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsizesmall,
+        va="bottom")
     ax.zaxis.set_rotate_label(false)
-    ax.set_zlabel(L"z_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsize,
+    ax.set_zlabel(L"z_{\mathcal{I}}\ \mathrm{[m]}",fontsize=fmt.fontsizesmall,
         rotation=90,va="baseline")
     ax.grid(alpha=fmt.gridalpha)
     ax.w_xaxis.pane.fill = false
